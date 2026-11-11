@@ -114,16 +114,49 @@ for (const u of UNITS) u.items.forEach((s, i) => {
 });
 const byUnit = id => ITEMS.filter(x => x.unit === id);
 
-// ---- 保存（人ごと） ----
-const LS = "kanji4-529";
+// ---- ID（先生が発行したIDだけ使える。名前はアプリに出さない） ----
+const IDS = ["e4n7", "r7r9"];
+const cleanId = s => String(s || "").normalize("NFKC").toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 10);
+
+// ---- 保存（IDごと） ----
+const LS = "kanji4-529v2";
 const loadAll = () => { try { return JSON.parse(localStorage.getItem(LS)) || {}; } catch (e) { return {}; } };
 let ALL = loadAll();
-ALL.users = ALL.users || ["よしき", "こうだい"];
-ALL.cur = ALL.cur || null;
+ALL.cur = IDS.includes(ALL.cur) ? ALL.cur : null;
 ALL.data = ALL.data || {};
 ALL.shuffle = ALL.shuffle !== false;
 const save = () => localStorage.setItem(LS, JSON.stringify(ALL));
 const me = () => { const n = ALL.cur; if (!ALL.data[n]) ALL.data[n] = { r: {}, w: {}, test: "" }; return ALL.data[n]; };
+// リンクの ?id=xxxx で自動ログイン
+{ const u = cleanId(new URLSearchParams(location.search).get("id")); if (IDS.includes(u)) { ALL.cur = u; save(); } }
+
+// ---- 学習記録（Apps Script → スプレッドシート「学習記録（アプリ）」） ----
+// 公開ページ（https）でだけ送る。送るのは ID・開いた記録・やった回（読み/書き・単元・問題数・正解数・時間）。
+const LOG_URL = "https://script.google.com/macros/s/AKfycbzl9ygX2TGUSIvZ-klW7BGiDgIkKHv6dnKAumzikZ0H2uE4anDp7DCqE3PLOJLp9g/exec";
+const APP = "kanji4-529";
+const QLOG = (() => {
+  const ON = location.protocol === "https:" && /github\.io$/.test(location.hostname);
+  const dev = (() => { try { let d = localStorage.getItem("__dev"); if (!d) { d = Math.random().toString(36).slice(2, 12); localStorage.setItem("__dev", d); } return d; } catch (e) { return "nostore"; } })();
+  let pending = null;
+  const queue = rec => { try { const q = JSON.parse(localStorage.getItem("__q") || "[]"); q.push(rec); localStorage.setItem("__q", JSON.stringify(q.slice(-50))); } catch (e) {} };
+  const post = rec => { try { fetch(LOG_URL, { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify(rec) }).catch(() => queue(rec)); } catch (e) { queue(rec); } };
+  const base = () => ({ v: 1, app: APP, sid: ALL.cur || "", dev });
+  const L = {
+    open() { if (!ON || !ALL.cur) return; post(Object.assign(base(), { st: "done", sec: "ひらいた", ok: 0, n: 0, of: 0, ms: 0 })); },
+    done(r) { if (!ON || !ALL.cur) return; pending = null; post(Object.assign(base(), { st: "done" }, r)); },
+    step(r) { if (!ON || !ALL.cur) return; if (r && r.n > 0) pending = Object.assign(base(), { st: "part" }, r); },
+    leave() { if (!ON || !pending) return; const body = JSON.stringify(pending); pending = null; try { if (!(navigator.sendBeacon && navigator.sendBeacon(LOG_URL, body))) queue(JSON.parse(body)); } catch (e) {} }
+  };
+  addEventListener("pagehide", () => L.leave());
+  addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden") L.leave(); });
+  if (ON) { try { const q = JSON.parse(localStorage.getItem("__q") || "[]"); if (q.length) { localStorage.setItem("__q", "[]"); q.forEach(post); } } catch (e) {} }
+  return L;
+})();
+// 1回分の記録（sec 例：「読み 5〜8」「書き 全部」）
+function logRec() {
+  const sec = (S.mode === "w" ? "書き " : "読み ") + (S.target === "all" ? "全部" : S.target === "weak" ? "要注意" : S.target === "miss" ? "まちがい" : UNITS.find(u => u.id === S.target).no);
+  return { sec, ok: S.ok, n: S.answered, of: S.firstTotal, wrong: S.miss.map(x => x.id), ms: Date.now() - S.t0 };
+}
 
 // ---- ひらがな判定 ----
 const norm = s => s.normalize("NFKC").replace(/[ァ-ヶ]/g, c => String.fromCharCode(c.charCodeAt(0) - 0x60))
@@ -131,13 +164,28 @@ const norm = s => s.normalize("NFKC").replace(/[ァ-ヶ]/g, c => String.fromChar
 const isRight = (it, v) => { const a = norm(v); return a === it.yomi || a === it.yomi + it.oku; };
 
 // ---- 画面：ホーム ----
+function login() {
+  $app.innerHTML = `<h1>4年 漢字テスト対策 5〜29</h1>
+  <div class="sub">漢字ドリル 5〜29（忘れもの 〜 季節の言葉 秋・力だめし）</div>
+  <div class="card"><div style="font-weight:800;font-size:18px">IDを 入れてね</div>
+    <div class="sub" style="margin:4px 0 10px">先生から もらった 4文字の ID（英語と数字）</div>
+    <input class="ans" id="idin" autocomplete="off" autocapitalize="off" spellcheck="false" inputmode="latin" placeholder="れい：a1b2">
+    <div class="hint hidden" id="idng">その ID は ちがうみたい。もう一回 見てね。</div>
+    <button class="btn big" id="idgo">はじめる</button></div>`;
+  const inp = document.getElementById("idin"), go = () => {
+    const v = cleanId(inp.value);
+    if (!IDS.includes(v)) { document.getElementById("idng").classList.remove("hidden"); return; }
+    ALL.cur = v; save(); QLOG.open(); home();
+  };
+  document.getElementById("idgo").onclick = go;
+  inp.addEventListener("keydown", e => { if (e.key === "Enter" && !e.isComposing) go(); });
+}
 function home() {
-  const users = ALL.users.map(n => `<button class="chip ${n === ALL.cur ? "on" : ""}" data-u="${esc(n)}">${esc(n)}</button>`).join("")
-    + `<button class="chip" id="addU">＋</button>`;
+  QLOG.leave();
+  if (!ALL.cur) return login();
   let h = `<h1>4年 漢字テスト対策 5〜29</h1>
   <div class="sub">漢字ドリル 5〜29（忘れもの 〜 季節の言葉 秋・力だめし）</div>
-  <div class="card"><div style="font-weight:800">だれがやる？</div><div class="users">${users}</div></div>`;
-  if (!ALL.cur) { $app.innerHTML = h + `<div class="tip">まず 自分の名前を タップしてね。</div>`; bindHome(); return; }
+  <div class="sub" style="margin-top:4px">ID：<b>${esc(ALL.cur)}</b> で やっています</div>`;
   const d = me();
   let days = "";
   if (d.test) {
@@ -166,17 +214,16 @@ function home() {
     <div class="card unit"><div><div class="tt">⚠️ 要注意の字（${WEAK.join("・")}）</div><div class="no">まちがえやすい字を しっかり練習</div></div>
       <div class="btns"><button class="btn y" data-go="r:weak">読み</button><button class="btn" data-go="w:weak">書き</button></div></div>
     <label class="toggle"><input type="checkbox" id="shuf" ${ALL.shuffle ? "checked" : ""}> 問題の順番を まぜる</label>
-    <button class="link" id="reset">${esc(ALL.cur)}さんの記録を リセット</button>
+    <button class="link" id="reset">このスマホの 記録を リセット</button>
+    <button class="link" id="logout">IDを 入れなおす</button>
     <div class="foot">※ 問題文は 漢字ドリル（光村図書 4年下 準拠）5〜29 より。答えの字は 教科書体に近い「Klee One」で表示しています。<br>※ 書き順アニメーションは KanjiVG（CC BY-SA 3.0, Ulrich Apel）を元にしています。字の形は 上の大きな字（教科書体）を見てね。</div>`;
   $app.innerHTML = h; bindHome();
 }
 function bindHome() {
-  $app.querySelectorAll("[data-u]").forEach(b => b.onclick = () => { ALL.cur = b.dataset.u; save(); home(); });
-  const add = document.getElementById("addU");
-  if (add) add.onclick = () => { const n = (prompt("名前を入れてね（ひらがな）") || "").trim(); if (n && !ALL.users.includes(n)) { ALL.users.push(n); ALL.cur = n; save(); home(); } };
+  const lo = document.getElementById("logout"); if (lo) lo.onclick = () => { if (confirm("IDを 入れなおす？")) { ALL.cur = null; save(); home(); } };
   const td = document.getElementById("tdate"); if (td) td.onchange = () => { me().test = td.value; save(); home(); };
   const sh = document.getElementById("shuf"); if (sh) sh.onchange = () => { ALL.shuffle = sh.checked; save(); };
-  const rs = document.getElementById("reset"); if (rs) rs.onclick = () => { if (confirm(ALL.cur + "さんの記録を 消してもいい？")) { ALL.data[ALL.cur] = { r: {}, w: {}, test: me().test }; save(); home(); } };
+  const rs = document.getElementById("reset"); if (rs) rs.onclick = () => { if (confirm("このスマホの 記録を 消してもいい？")) { ALL.data[ALL.cur] = { r: {}, w: {}, test: me().test }; save(); home(); } };
   $app.querySelectorAll("[data-go]").forEach(b => b.onclick = () => { const [m, t] = b.dataset.go.split(":"); start(m, t); });
 }
 
@@ -196,7 +243,7 @@ function start(mode, target) {
     extra.reverse().forEach(e => q.splice(e.at, 0, { it: e.it, again: true }));
   }
   const title = target === "all" ? "全部まとめて" : target === "weak" ? "要注意の字" : target === "miss" ? "まちがえた問題" : "ドリル " + UNITS.find(u => u.id === target).no;
-  S = { mode, target, title, q, i: 0, ok: 0, firstTotal: list.length, miss: [], retried: new Set() };
+  S = { mode, target, title, q, i: 0, ok: 0, answered: 0, firstTotal: list.length, miss: [], t0: Date.now() };
   if (mode === "w") prep(); else show();
 }
 function prep() {
@@ -264,7 +311,8 @@ function record(it, val, ok) {
   if (S.mode === "r") d.r[it.id] = val; else d.w[it.id] = val;
   save();
   const q = S.q[S.i];
-  if (!q.again && !q.retry) { if (ok) S.ok++; else S.miss.push(it); }
+  if (!q.again && !q.retry) { S.answered++; if (ok) S.ok++; else S.miss.push(it); }
+  QLOG.step(logRec());
   // まちがえたら 最後に もう一回
   if (!ok && (q.tries || 0) < 1) S.q.push({ it, retry: true, again: true, tries: (q.tries || 0) + 1 });
 }
@@ -347,7 +395,7 @@ function animate(ci, c, hl) {
 
 // ---- 結果 ----
 function result() {
-  const d = me();
+  QLOG.done(logRec());
   const pct = Math.round(S.ok / S.firstTotal * 100);
   const msg = pct === 100 ? "パーフェクト！🎉" : pct >= 80 ? "よくできました！" : pct >= 50 ? "あと少し！" : "まちがえた所を もう一回 やろう";
   const nextTip = S.mode === "r" && pct === 100 && S.target !== "miss" && S.target !== "weak" ? `<div class="tip" style="margin-top:10px">読みが ぜんぶ ○！ つぎは <b>書き</b> に チャレンジしよう ✏️</div>` : "";
@@ -361,11 +409,12 @@ function result() {
       <button class="btn g" id="home">ホームへ</button></div></div>`;
   document.getElementById("home").onclick = home;
   const a = document.getElementById("again");
-  if (a) a.onclick = () => { const mode = S.mode; const list = uniqMiss; S = { mode, target: "miss", title: "まちがえた問題", q: list.map(it => ({ it })), i: 0, ok: 0, firstTotal: list.length, miss: [] }; mode === "w" ? prep() : show(); };
+  if (a) a.onclick = () => { const mode = S.mode; const list = uniqMiss; S = { mode, target: "miss", title: "まちがえた問題", q: list.map(it => ({ it })), i: 0, ok: 0, answered: 0, firstTotal: list.length, miss: [], t0: Date.now() }; mode === "w" ? prep() : show(); };
   const tw = document.getElementById("toW");
   if (tw) tw.onclick = () => start("w", S.target);
 }
 
+QLOG.open();
 home();
 })();
 </script>
