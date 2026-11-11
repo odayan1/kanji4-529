@@ -118,24 +118,32 @@ const byUnit = id => ITEMS.filter(x => x.unit === id);
 const IDS = ["e4n7", "r7r9"];
 const cleanId = s => String(s || "").normalize("NFKC").toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 10);
 
+// ---- おためし版（?try=1）：IDなし・記録は送らない・保存も別 ----
+const TRY = new URLSearchParams(location.search).has("try");
+
 // ---- 保存（IDごと） ----
-const LS = "kanji4-529v2";
+// v3：2026-11-12 正解をくり返さない版にしたので、それまでの進み具合はリセット（IDだけ引きつぐ）
+const LS = TRY ? "kanji4-529try" : "kanji4-529v3";
 const loadAll = () => { try { return JSON.parse(localStorage.getItem(LS)) || {}; } catch (e) { return {}; } };
 let ALL = loadAll();
-ALL.cur = IDS.includes(ALL.cur) ? ALL.cur : null;
+if (!TRY && !localStorage.getItem(LS)) { try { const old = JSON.parse(localStorage.getItem("kanji4-529v2") || "{}"); if (old.cur) ALL.cur = old.cur; localStorage.removeItem("kanji4-529v2"); localStorage.removeItem("kanji4-529"); } catch (e) {} }
+ALL.cur = TRY ? "try" : (IDS.includes(ALL.cur) ? ALL.cur : null);
+ALL.data = ALL.data || {};
+ALL.shuffle = ALL.shuffle !== false;
+localStorage.setItem(LS, JSON.stringify(ALL));
 ALL.data = ALL.data || {};
 ALL.shuffle = ALL.shuffle !== false;
 const save = () => localStorage.setItem(LS, JSON.stringify(ALL));
 const me = () => { const n = ALL.cur; if (!ALL.data[n]) ALL.data[n] = { r: {}, w: {}, test: "" }; return ALL.data[n]; };
 // リンクの ?id=xxxx で自動ログイン
-{ const u = cleanId(new URLSearchParams(location.search).get("id")); if (IDS.includes(u)) { ALL.cur = u; save(); } }
+if (!TRY) { const u = cleanId(new URLSearchParams(location.search).get("id")); if (IDS.includes(u)) { ALL.cur = u; save(); } }
 
 // ---- 学習記録（Apps Script → スプレッドシート「学習記録（アプリ）」） ----
 // 公開ページ（https）でだけ送る。送るのは ID・開いた記録・やった回（読み/書き・単元・問題数・正解数・時間）。
 const LOG_URL = "https://script.google.com/macros/s/AKfycbzl9ygX2TGUSIvZ-klW7BGiDgIkKHv6dnKAumzikZ0H2uE4anDp7DCqE3PLOJLp9g/exec";
 const APP = "kanji4-529";
 const QLOG = (() => {
-  const ON = location.protocol === "https:" && /github\.io$/.test(location.hostname);
+  const ON = !TRY && location.protocol === "https:" && /github\.io$/.test(location.hostname);
   const dev = (() => { try { let d = localStorage.getItem("__dev"); if (!d) { d = Math.random().toString(36).slice(2, 12); localStorage.setItem("__dev", d); } return d; } catch (e) { return "nostore"; } })();
   let pending = null;
   const queue = rec => { try { const q = JSON.parse(localStorage.getItem("__q") || "[]"); q.push(rec); localStorage.setItem("__q", JSON.stringify(q.slice(-50))); } catch (e) {} };
@@ -185,7 +193,7 @@ function home() {
   if (!ALL.cur) return login();
   let h = `<h1>4年 漢字テスト対策 5〜29</h1>
   <div class="sub">漢字ドリル 5〜29（忘れもの 〜 季節の言葉 秋・力だめし）</div>
-  <div class="sub" style="margin-top:4px">ID：<b>${esc(ALL.cur)}</b> で やっています</div>`;
+  ${TRY ? `<div class="tip" style="margin-top:8px;background:#e0f2fe">🔍 おためし版です（IDなし・記録は 送りません）</div>` : `<div class="sub" style="margin-top:4px">ID：<b>${esc(ALL.cur)}</b> で やっています</div>`}`;
   const d = me();
   let days = "";
   if (d.test) {
@@ -215,7 +223,7 @@ function home() {
       <div class="btns"><button class="btn y" data-go="r:weak">読み</button><button class="btn" data-go="w:weak">書き</button></div></div>
     <label class="toggle"><input type="checkbox" id="shuf" ${ALL.shuffle ? "checked" : ""}> 問題の順番を まぜる</label>
     <button class="link" id="reset">このスマホの 記録を リセット</button>
-    <button class="link" id="logout">IDを 入れなおす</button>
+    ${TRY ? "" : `<button class="link" id="logout">IDを 入れなおす</button>`}
     <div class="foot">※ 問題文は 漢字ドリル（光村図書 4年下 準拠）5〜29 より。答えの字は 教科書体に近い「Klee One」で表示しています。<br>※ 書き順アニメーションは KanjiVG（CC BY-SA 3.0, Ulrich Apel）を元にしています。字の形は 上の大きな字（教科書体）を見てね。</div>`;
   $app.innerHTML = h; bindHome();
 }
@@ -235,13 +243,8 @@ function start(mode, target) {
   let list = target === "all" ? ITEMS.slice() : target === "weak" ? ITEMS.filter(x => x.weak)
     : target === "miss" ? ITEMS.filter(x => mode === "r" ? d.r[x.id] === 0 : (d.w[x.id] === "x" || d.w[x.id] === "s")) : byUnit(target);
   if (ALL.shuffle) shuffle(list);
+  // 正解した問題は もう出さない。もう一回 出すのは まちがい・わからない（書きは △・×）だけ（record で最後に足す）
   let q = list.map(it => ({ it }));
-  // 要注意の字は もう一回 出す（少しあとに）
-  if (target !== "weak") {
-    const extra = [];
-    q.forEach((x, i) => { if (x.it.weak) extra.push({ it: x.it, at: Math.min(q.length, i + 5), again: true }); });
-    extra.reverse().forEach(e => q.splice(e.at, 0, { it: e.it, again: true }));
-  }
   const title = target === "all" ? "全部まとめて" : target === "weak" ? "要注意の字" : target === "miss" ? "まちがえた問題" : "ドリル " + UNITS.find(u => u.id === target).no;
   S = { mode, target, title, q, i: 0, ok: 0, answered: 0, firstTotal: list.length, miss: [], t0: Date.now() };
   if (mode === "w") prep(); else show();
