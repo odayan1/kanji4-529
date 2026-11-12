@@ -142,6 +142,24 @@ h1{font-size:22px;margin:6px 0 2px;font-weight:800}
 .cfbox i{position:absolute;top:-20px;border-radius:2px;animation:fall linear forwards}
 @keyframes fall{to{transform:translate(var(--dx),110vh) rotate(var(--rot))}}
 @keyframes pop{0%{transform:scale(0);opacity:0}70%{transform:scale(1.2);opacity:1}100%{transform:scale(1)}}
+.mbtn{display:block;margin:10px auto 0;background:#eef6ff;border:2px solid #bcd7f5;color:#1d4ed8;border-radius:999px;padding:7px 16px;font:inherit;font-weight:800;font-size:15px}
+.shbg{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:60;display:flex;align-items:flex-end;justify-content:center}
+.sh{background:#fff;width:100%;max-width:560px;border-radius:18px 18px 0 0;padding:16px 16px calc(16px + env(safe-area-inset-bottom));max-height:82vh;overflow:auto;animation:up .22s ease-out}
+@keyframes up{from{transform:translateY(40px);opacity:0}to{transform:none;opacity:1}}
+.sht{font-weight:800;color:#1d4ed8;font-size:15px}
+.kwe{border-top:1px dashed var(--line);padding:10px 0}
+.kwe:first-of-type{border-top:0}
+.mw{font-family:"Klee One",serif;font-weight:600;font-size:28px}
+.my{color:var(--sub);font-size:14px;font-weight:800}
+.mm{font-size:17px;line-height:1.7;margin-top:2px}
+.tagx{font-size:11px;background:#f1f5f9;color:#475569;border-radius:6px;padding:1px 6px;vertical-align:middle}
+.kw{background:#fff;border-radius:12px;padding:4px 12px;margin-bottom:8px;box-shadow:0 1px 0 var(--line)}
+.kw .mw{font-size:24px}.kw .mm{font-size:15px}
+.tabs{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:4px 0 10px}
+.tabs button{border:2px solid var(--line);background:#fff;border-radius:12px;padding:9px;font:inherit;font-weight:800;font-size:15px;color:var(--sub)}
+.tabs button.on{border-color:#3b82c4;background:#3b82c4;color:#fff}
+[data-mean]{cursor:pointer}
+.mi{font-style:normal;float:right;font-size:16px;opacity:.75}
 </style>
 </head>
 <body>
@@ -149,6 +167,7 @@ h1{font-size:22px;margin:6px 0 2px;font-weight:800}
 <script src="items.js"></script>
 <script src="extra.js"></script>
 <script src="dict.js"></script>
+<script src="kotoba.js"></script>
 <script src="notes.js"></script>
 <script src="notes2.js"></script>
 <script src="strokes.js"></script>
@@ -173,6 +192,37 @@ for (const uid in EXTRA) EXTRA[uid].forEach((s, i) => {
   const [pre, k, oku, post, yomi, src] = s.split("|");
   POOL.push({ id: "x" + uid + "-" + i, unit: uid, pre, k, oku, post, yomi, src, weak: [...k].some(c => WEAK.includes(c)) });
 });
+// ---- ことばの意味（国語じてん） ----
+const POOL_BY = Object.fromEntries(POOL.map(x => [x.id, x]));
+const KW = KOTOBA.map(([w, y, m, ex]) => ({ w, y, m, ex: !!ex }));
+function meaningsFor(it) {
+  const sen = it.pre + it.k + it.oku + it.post, t = it.k + it.oku;
+  const main = KW.filter(e => !e.ex && (e.w === t || (e.w.length > t.length && e.w.includes(it.k) && sen.includes(e.w))));
+  main.sort((a, b) => (a.w === t ? -1 : 0) - (b.w === t ? -1 : 0));
+  return main.concat(KW.filter(e => e.ex && sen.includes(e.w)));
+}
+// ことば → ドリルの単元（じてんの並び用）
+const KW_UNIT = {};
+for (const it of POOL) for (const e of meaningsFor(it)) if (!KW_UNIT[e.w]) KW_UNIT[e.w] = it.unit;
+for (const e of KW) if (!KW_UNIT[e.w]) { const du = DICT_UNITS.find(([, cs]) => [...e.w].some(c => cs.includes(c))); KW_UNIT[e.w] = du ? du[0] : "u7"; }
+const meanBtn = it => `<button class="mbtn" data-mean="${esc(it.id)}">📘 ことばの 意味</button>`;
+function openSheet(html) {
+  const bg = document.createElement("div"); bg.className = "shbg";
+  bg.innerHTML = `<div class="sh">${html}<button class="btn big g" data-close>とじる</button></div>`;
+  bg.onclick = e => { if (e.target === bg || e.target.closest("[data-close]")) bg.remove(); };
+  document.body.appendChild(bg);
+}
+const kwHTML = e => `<div class="kwe"><div><span class="mw">${esc(e.w)}</span> <span class="my">${esc(e.y)}</span>${e.ex ? ` <span class="tagx">文の中の ことば</span>` : ""}</div><div class="mm">${esc(e.m)}</div></div>`;
+function openMean(it) {
+  const es = meaningsFor(it);
+  openSheet(`<div class="sht">📘 ことばの 意味</div>
+    <div class="sent" style="font-size:20px;margin:4px 0 8px">${esc(it.pre)}<u>${esc(it.k)}</u>${esc(it.oku)}${esc(it.post)}</div>
+    ${es.map(kwHTML).join("") || `<div class="sub">このことばの 説明は まだ ありません。</div>`}`);
+}
+document.addEventListener("click", e => {
+  const m = e.target.closest("[data-mean]"); if (m && POOL_BY[m.dataset.mean]) { e.preventDefault(); openMean(POOL_BY[m.dataset.mean]); }
+});
+
 // テストで「1回だけ」にする単位＝このドリルで習う漢字（新出43字）＋とくべつな読みのことば
 const testKeys = it => { const ks = [...new Set([...it.k].filter(c => NEW_KANJI.includes(c)))]; if (SPECIAL_WORDS.includes(it.k)) ks.push("S:" + it.k); return ks; };
 
@@ -289,7 +339,7 @@ function home() {
       <div class="no">読み 10問 ＋ 書き 40問（100点まんてん）。同じ漢字は 1回だけ。毎回 ちがう問題が ランダムに出るよ</div>
       ${tests.length ? `<div class="no" style="margin-top:6px">これまで：${tests.slice(-5).reverse().map(t => `${esc(t.d)} <b>${t.s}点</b>${t.t ? `（${clock(t.t * 1000)}）` : ""}`).join("　")}</div>` : ""}</div>
       <div class="btns"><button class="btn" id="goTest">テスト</button></div></div>
-    <div class="card unit"><div><div class="tt">📖 漢字じてん</div><div class="no">5〜29で ならう 漢字 ${Object.keys(DICT).length}字（読み方・意味・熟語・書き順）</div></div>
+    <div class="card unit"><div><div class="tt">📖 じてん</div><div class="no">わからない ことばの 意味を しらべよう（${KW.length}語）。漢字 ${Object.keys(DICT).length}字の 読み方・書き順も 見られるよ</div></div>
       <div class="btns"><button class="btn y" id="goDict">ひらく</button></div></div>
     <label class="toggle"><input type="checkbox" id="shuf" ${ALL.shuffle ? "checked" : ""}> 問題の順番を まぜる</label>
     <button class="link" id="reset">このスマホの 記録を リセット</button>    <div class="foot">※ 問題文は 漢字ドリル（光村図書 4年下 準拠）5〜29 より。答えの字は 教科書体に近い「Klee One」で表示しています。<br>※ 書き順アニメーションは KanjiVG（CC BY-SA 3.0, Ulrich Apel）を元にしています。字の形は 上の大きな字（教科書体）を見てね。</div>`;
@@ -301,7 +351,7 @@ function bindHome() {
   const rs = document.getElementById("reset"); if (rs) rs.onclick = () => { if (confirm("このスマホの 記録を 消してもいい？")) { ALL.data[ALL.cur] = { r: {}, w: {}, test: me().test }; save(); home(); } };
   $app.querySelectorAll("[data-go]").forEach(b => b.onclick = () => { const [m, t] = b.dataset.go.split(":"); start(m, t); });
   const gt = document.getElementById("goTest"); if (gt) gt.onclick = testIntro;
-  const gd = document.getElementById("goDict"); if (gd) gd.onclick = () => { QLOG.mark("じてん"); dictList(""); };
+  const gd = document.getElementById("goDict"); if (gd) gd.onclick = () => { QLOG.mark("じてん"); kotobaList(""); };
 }
 
 // ====================== テストモード ======================
@@ -416,7 +466,7 @@ function testCheck() {
   const skipped = !!T.sk[T.i];
   $app.innerHTML = tBar(T.i, 40, `答え ${T.i + 1}/40`) + `<div class="card"><span class="mode w">（${T.i + 1}）の答え</span>${skipped ? `<span class="weak">とばした問題（×）</span>` : ""}
     <div class="sent" style="font-size:20px;margin:8px 0 0">${esc(it.pre)}<span class="box">${esc(it.yomi + it.oku)}</span>${esc(it.post)}</div>
-    <div class="answer"><div class="k">${[...it.k].map(c => isKanji(c) ? esc(c) : `<span class="ok2">${esc(c)}</span>`).join("")}<span class="ok2">${esc(it.oku)}</span></div></div>
+    <div class="answer"><div class="k">${[...it.k].map(c => isKanji(c) ? esc(c) : `<span class="ok2">${esc(c)}</span>`).join("")}<span class="ok2">${esc(it.oku)}</span></div>${meanBtn(it)}</div>
     ${WORD_NOTES[it.k] ? `<div class="wn">💡 ${esc(WORD_NOTES[it.k])}</div>` : ""}${it.oku ? `<div class="wn">💡 送りがな「${esc(it.oku)}」まで 書けたかな？</div>` : ""}
     ${skipped ? `<button class="btn big g" data-g="x">おぼえた！ つぎへ</button>` : `<div class="grade"><button class="g-o" data-g="o"><b>○</b>あってた</button><button class="g-s" data-g="s"><b>△</b>形が<br>あやしい</button><button class="g-x" data-g="x"><b>×</b>ちがう・<br>書けなかった</button></div>`}
     <button class="link" id="showN">とめ・はね・はらいを 見る ▼</button><div id="nt" class="hidden"></div></div>`;
@@ -468,8 +518,8 @@ function testResult() {
     <div class="sub center" style="margin-top:4px">書き △ ${wt}・× ${40 - ws - wt}（1問 2点。○だけ 点になるよ）</div>
     ${hist.length > 1 ? `<div class="card"><div style="font-weight:800;font-size:14px">これまでの きろく</div><div class="hist">${bars}</div></div>` : ""}
     <div class="card">
-    ${missR.length ? `<div style="font-weight:800;margin-top:14px;text-align:left">読みで まちがえた問題</div><ul class="mlist">${T.r.map((x, i) => rOk[i] ? "" : `<li>${esc(x.k)}${esc(x.oku)}<span>正しくは ${esc(x.yomi + x.oku)}${T.ra[i] ? "／きみの答え " + esc(T.ra[i]) : ""}</span></li>`).join("")}</ul>` : ""}
-    ${missW.length ? `<div style="font-weight:800;margin-top:14px;text-align:left">書きで △・× だった問題</div><ul class="mlist">${missW.map(x => `<li>${esc(x.k)}${esc(x.oku)}<span>${esc(x.yomi + x.oku)}</span></li>`).join("")}</ul>` : ""}
+    ${missR.length ? `<div style="font-weight:800;margin-top:14px;text-align:left">読みで まちがえた問題</div><ul class="mlist">${T.r.map((x, i) => rOk[i] ? "" : `<li data-mean="${esc(x.id)}"><i class="mi">📘</i>${esc(x.k)}${esc(x.oku)}<span>正しくは ${esc(x.yomi + x.oku)}${T.ra[i] ? "／きみの答え " + esc(T.ra[i]) : ""}</span></li>`).join("")}</ul>` : ""}
+    ${missW.length ? `<div style="font-weight:800;margin-top:14px;text-align:left">書きで △・× だった問題</div><ul class="mlist">${missW.map(x => `<li data-mean="${esc(x.id)}"><i class="mi">📘</i>${esc(x.k)}${esc(x.oku)}<span>${esc(x.yomi + x.oku)}</span></li>`).join("")}</ul>` : ""}
     <div class="row2" style="margin-top:12px">
       ${missR.length ? `<button class="btn y" id="prR">読みの まちがいを<br>練習</button>` : ""}
       ${missW.length ? `<button class="btn" id="prW">書きの △× を<br>練習</button>` : ""}
@@ -516,14 +566,41 @@ function confetti(n) {
   setTimeout(() => box.remove(), 5500);
 }
 
-// ====================== 漢字じてん ======================
+// ====================== じてん（ことばの意味＝国語じてん／漢字） ======================
 const hira = s => norm(s || "").replace(/\./g, "");
+const dictTop = tab => `<div class="top"><button class="x" id="back">←</button><div style="font-weight:800;font-size:18px">📖 じてん</div></div>
+  <div class="tabs"><button class="${tab === "w" ? "on" : ""}" data-tab="w">📘 ことばの 意味</button><button class="${tab === "k" ? "on" : ""}" data-tab="k">🈶 漢字</button></div>`;
+function bindDictTop() {
+  document.getElementById("back").onclick = home;
+  $app.querySelectorAll("[data-tab]").forEach(b => b.onclick = () => b.dataset.tab === "w" ? kotobaList("") : dictList(""));
+}
+function kotobaList(q) {
+  QLOG.leave();
+  const query = (q || "").trim(), qh = hira(query);
+  const hit = e => !query || e.w.includes(query) || hira(e.y).includes(qh) || query.includes(e.w);
+  let h = dictTop("w") + `<div style="display:flex;gap:6px"><input class="ans" id="dq" placeholder="さがす（ことば・読み）" value="${esc(query)}" style="font-size:18px">
+    <button class="btn y" id="dqb" style="flex:none">🔍</button></div>
+    ${query ? `<button class="link" id="dqc" style="margin-top:6px">ぜんぶ 表示に もどす</button>` : ""}`;
+  let n = 0;
+  for (const u of UNITS) {
+    const es = KW.filter(e => KW_UNIT[e.w] === u.id && hit(e)); if (!es.length) continue; n += es.length;
+    h += `<div class="dsec">ドリル ${esc(u.no)}　${esc(u.title)}</div>${es.map(e => `<div class="kw">${kwHTML(e)}</div>`).join("")}`;
+  }
+  if (!n) h += `<div class="tip" style="margin-top:12px">見つからなかったよ。ほかの ことばで さがしてね。</div>`;
+  $app.innerHTML = `<div id="dictview">${h}</div>`;
+  bindDictTop();
+  const dq = document.getElementById("dq");
+  dq.addEventListener("keydown", e => { if (e.key === "Enter" && !e.isComposing) { e.preventDefault(); kotobaList(dq.value); } });
+  document.getElementById("dqb").onclick = () => kotobaList(dq.value);
+  const dqc = document.getElementById("dqc"); if (dqc) dqc.onclick = () => kotobaList("");
+  window.scrollTo(0, 0);
+}
 function dictList(q) {
   QLOG.leave();
   const query = (q || "").trim(), qh = hira(query);
   const hit = c => { if (!query) return true; const e = DICT[c]; if (c === query || query.includes(c)) return true;
     return [e.on, e.kun, e.bu, ...e.j, ...e.m].some(s => hira(s).includes(qh)); };
-  let h = `<div class="top"><button class="x" id="back">←</button><div style="font-weight:800;font-size:18px">📖 漢字じてん</div></div>
+  let h = dictTop("k") + `
     <div style="display:flex;gap:6px"><input class="ans" id="dq" placeholder="さがす（漢字・読み・ことば）" value="${esc(query)}" style="font-size:18px">
     <button class="btn y" id="dqb" style="flex:none">🔍</button></div>
     ${query ? `<button class="link" id="dqc" style="margin-top:6px">ぜんぶ 表示に もどす</button>` : ""}`;
@@ -539,7 +616,7 @@ function dictList(q) {
   if (sp.length) h += `<div class="dsec">とくべつな 読み方の ことば</div><div class="card" style="padding:6px 12px">${sp.map(x => `<div class="nr"><span class="nrk" style="font-size:30px;width:auto">${esc(x.w)}</span><div><b>${esc(x.y)}</b></div></div>`).join("")}</div>`;
   if (!n && !nr.length && !sp.length) h += `<div class="tip" style="margin-top:12px">見つからなかったよ。ほかの ことばで さがしてね。</div>`;
   $app.innerHTML = `<div id="dictview">${h}</div>`;
-  document.getElementById("back").onclick = home;
+  bindDictTop();
   const dq = document.getElementById("dq");
   dq.addEventListener("keydown", e => { if (e.key === "Enter" && !e.isComposing) { e.preventDefault(); dictList(dq.value); } });
   document.getElementById("dqb").onclick = () => dictList(dq.value);
@@ -566,7 +643,7 @@ function dictDetail(c, q) {
     </div>
     <div style="font-weight:800;margin:6px 2px">書き順と 注意（とめ・はね・はらい）</div>
     <div id="dc">${kanjiCardsHTML([c], { noHead: true })}</div>
-    <div class="card"><div class="dlab" style="margin-top:0">テストに出る 文（${qs.length}）</div>${qs.map(it => `<div class="dr">${hl(it)}<span class="sub">（${esc(it.yomi + it.oku)}）</span></div>`).join("")}</div>
+    <div class="card"><div class="dlab" style="margin-top:0">テストに出る 文（${qs.length}）</div>${qs.map(it => `<div class="dr" data-mean="${esc(it.id)}"><i class="mi">📘</i>${hl(it)}<span class="sub">（${esc(it.yomi + it.oku)}）</span></div>`).join("")}</div>
     <div class="row2"><button class="btn g" id="pv" ${prev ? "" : "disabled"}>← ${esc(prev || "")}</button><button class="btn g" id="nx" ${nxt ? "" : "disabled"}>${esc(nxt || "")} →</button></div>`;
   $app.innerHTML = `<div id="dictview">${h}</div>`;
   bindKanjiCards(document.getElementById("dc"), [c]);
@@ -629,7 +706,7 @@ function show() {
       inp.disabled = true;
       const full = `${esc(it.pre)}<u>${esc(it.k)}</u>${esc(it.oku)}${esc(it.post)}`;
       document.getElementById("fb").innerHTML = `<div class="fb ${ok ? "ok" : "ng"}">${ok ? "○ せいかい！" : "× ざんねん"}<small>${esc(it.k)} ＝ <b>${esc(it.yomi)}</b>${it.oku ? "（" + esc(it.yomi + it.oku) + "）" : ""}</small></div>
-        ${ok ? "" : `<div class="sub center" style="margin-top:6px">あとで もう一回 出るよ</div>`}`;
+        ${ok ? "" : `<div class="sub center" style="margin-top:6px">あとで もう一回 出るよ</div>`}${meanBtn(it)}`;
       const b = document.getElementById("go"); b.textContent = "つぎへ"; b.onclick = next;
       document.getElementById("dk").classList.add("hidden");
       b.focus();
@@ -669,7 +746,7 @@ function reveal(it) {
   const uniq = [...new Set(kanji)];
   let h = `<div class="card"><div class="answer"><div class="lbl">こたえ</div>
     <div class="k">${[...it.k].map(c => isKanji(c) ? esc(c) : `<span class="ok2">${esc(c)}</span>`).join("")}<span class="ok2">${esc(it.oku)}</span></div>
-    <div class="sent" style="font-size:20px;margin:0">${esc(it.pre)}<u>${esc(it.k)}</u>${esc(it.oku)}${esc(it.post)}</div></div>`;
+    <div class="sent" style="font-size:20px;margin:0">${esc(it.pre)}<u>${esc(it.k)}</u>${esc(it.oku)}${esc(it.post)}</div>${meanBtn(it)}</div>`;
   if (WORD_NOTES[it.k]) h += `<div class="wn">💡 ${esc(WORD_NOTES[it.k])}</div>`;
   if (it.oku) h += `<div class="wn">💡 送りがな「${esc(it.oku)}」まで 書けたかな？</div>`;
   h += `<div style="font-weight:800;margin-top:10px">ここに 気をつけて！（×に ならないために）</div>`;
@@ -755,7 +832,7 @@ function result() {
   const uniqMiss = [...new Map(S.miss.map(x => [x.id, x])).values()];
   $app.innerHTML = `<div class="card center"><div class="sub">${esc(S.title)}（${S.mode === "w" ? "書き" : "読み"}）</div>
     <div class="score">${S.ok} / ${S.firstTotal}</div><div style="font-size:20px;font-weight:800">${msg}</div>${nextTip}
-    ${uniqMiss.length ? `<div style="font-weight:800;margin-top:14px;text-align:left">まちがえた（${S.mode === "w" ? "△×" : "×"}）問題</div><ul class="mlist">${uniqMiss.map(x => `<li>${esc(x.k)}${esc(x.oku)}<span>${esc(x.yomi + x.oku)}</span></li>`).join("")}</ul>` : ""}
+    ${uniqMiss.length ? `<div style="font-weight:800;margin-top:14px;text-align:left">まちがえた（${S.mode === "w" ? "△×" : "×"}）問題</div><ul class="mlist">${uniqMiss.map(x => `<li data-mean="${esc(x.id)}"><i class="mi">📘</i>${esc(x.k)}${esc(x.oku)}<span>${esc(x.yomi + x.oku)}</span></li>`).join("")}</ul>` : ""}
     <div class="row2" style="margin-top:12px">
       ${uniqMiss.length ? `<button class="btn ${S.mode === "w" ? "" : "y"}" id="again">まちがえたのを<br>もう一回</button>` : ""}
       ${S.mode === "r" && S.target !== "miss" && S.target !== "weak" ? `<button class="btn" id="toW">書きへ すすむ</button>` : ""}
