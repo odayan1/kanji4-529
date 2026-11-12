@@ -120,6 +120,7 @@ h1{font-size:22px;margin:6px 0 2px;font-weight:800}
 <script src="extra.js"></script>
 <script src="dict.js"></script>
 <script src="notes.js"></script>
+<script src="notes2.js"></script>
 <script src="strokes.js"></script>
 <script>
 (() => {
@@ -235,12 +236,6 @@ function home() {
   }
   const tests = d.tests || [];
   h += `<div class="card test">📅 テストの日 <input type="date" id="tdate" value="${esc(d.test || "")}"> ${days}</div>
-  <div class="card unit" style="border:3px solid var(--main)"><div><div class="tt">📝 テストモード</div>
-    <div class="no">読み 10問 ＋ 書き 40問（100点まんてん）。同じ漢字は 1回だけ。毎回 ちがう問題が ランダムに出るよ</div>
-    ${tests.length ? `<div class="no" style="margin-top:6px">これまで：${tests.slice(-5).reverse().map(t => `${esc(t.d)} <b>${t.s}点</b>`).join("　")}</div>` : ""}</div>
-    <div class="btns"><button class="btn" id="goTest">テスト</button></div></div>
-  <div class="card unit"><div><div class="tt">📖 漢字じてん</div><div class="no">5〜29で ならう 漢字 ${Object.keys(DICT).length}字（読み方・意味・熟語・書き順）</div></div>
-    <div class="btns"><button class="btn y" id="goDict">ひらく</button></div></div>
   <div class="tip">おすすめの順番：<b>① 読み</b>を ぜんぶ ○ にする → <b>② 書き</b>（ノートに書いてから 答えを見る）。<br>書きは「とめ・はね・はらい」まで しっかり 見よう。</div>`;
   for (const u of UNITS) {
     const its = byUnit(u.id);
@@ -260,6 +255,12 @@ function home() {
       <div class="btns"><button class="btn y" data-go="r:miss" ${rN ? "" : "disabled"}>読み</button><button class="btn" data-go="w:miss" ${wN ? "" : "disabled"}>書き</button></div></div>
     <div class="card unit"><div><div class="tt">⚠️ 要注意の字（${WEAK.join("・")}）</div><div class="no">まちがえやすい字を しっかり練習</div></div>
       <div class="btns"><button class="btn y" data-go="r:weak">読み</button><button class="btn" data-go="w:weak">書き</button></div></div>
+    <div class="card unit" style="border:3px solid var(--main)"><div><div class="tt">📝 テストモード</div>
+      <div class="no">読み 10問 ＋ 書き 40問（100点まんてん）。同じ漢字は 1回だけ。毎回 ちがう問題が ランダムに出るよ</div>
+      ${tests.length ? `<div class="no" style="margin-top:6px">これまで：${tests.slice(-5).reverse().map(t => `${esc(t.d)} <b>${t.s}点</b>`).join("　")}</div>` : ""}</div>
+      <div class="btns"><button class="btn" id="goTest">テスト</button></div></div>
+    <div class="card unit"><div><div class="tt">📖 漢字じてん</div><div class="no">5〜29で ならう 漢字 ${Object.keys(DICT).length}字（読み方・意味・熟語・書き順）</div></div>
+      <div class="btns"><button class="btn y" id="goDict">ひらく</button></div></div>
     <label class="toggle"><input type="checkbox" id="shuf" ${ALL.shuffle ? "checked" : ""}> 問題の順番を まぜる</label>
     <button class="link" id="reset">このスマホの 記録を リセット</button>
     ${TRY ? "" : `<button class="link" id="logout">IDを 入れなおす</button>`}
@@ -597,7 +598,7 @@ function kanjiCardsHTML(chars, opt) {
   opt = opt || {};
   return chars.map((c, ci) => {
     const N = NOTES[c], st = STROKES[c] || [];
-    let h = `<div class="kc">${opt.noHead ? "" : `<div class="hd"><div class="gl">${esc(c)}</div><div class="meta"><b>${st.length}画</b>${WEAK.includes(c) ? ` <span class="wk">⚠️ 要注意の字</span>` : ""}<br>${N ? "★をタップすると その画が 赤くなるよ" : ""}</div></div>`}
+    let h = `<div class="kc">${opt.noHead ? "" : `<div class="hd"><div class="gl">${esc(c)}</div><div class="meta"><b>${st.length}画</b>${WEAK.includes(c) ? ` <span class="wk">⚠️ 要注意の字</span>` : ""}${NEW_KANJI.includes(c) ? "" : ` <span class="sub">（3年までに ならった字）</span>`}<br>${N ? "★をタップすると その画が 赤くなるよ" : ""}</div></div>`}
       <div class="sv"><svg viewBox="0 0 109 109" id="sv${ci}"></svg><div class="ctl">
       <button class="btn g" data-play="${ci}">▶ 書き順を見る</button>
       <button class="btn g" data-all="${ci}">ぜんぶ表示</button></div></div>`;
