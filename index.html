@@ -447,7 +447,7 @@ function testResult() {
   // ランク（星・はなまる・ことば）
   const tier = score === 100 ? { stars: 3, mark: "hana", title: "パーフェクト！", face: "🦁", words: ["ぜんぶ せいかい！ 漢字はかせだ！", "100点！ 先生も びっくり！"] }
     : score >= 90 ? { stars: 3, mark: "hana", title: "すばらしい！", face: "🐯", words: ["あと ちょっとで 100点！", "すごい！ 漢字マスターまで あと一歩！"] }
-    : score >= 70 ? { stars: 2, mark: "maru", title: "よくできました！", face: "🐶", words: ["いい ちょうし！ この まま いこう！", "ぐんぐん のびてるよ！"] }
+    : score >= 70 ? { stars: 2, mark: score >= 80 ? "hana" : "maru", title: "よくできました！", face: "🐶", words: ["いい ちょうし！ この まま いこう！", "ぐんぐん のびてるよ！"] }
     : score >= 50 ? { stars: 1, mark: "maru", title: "いいかんじ！", face: "🐱", words: ["半分 こえたね！ つぎは 70点を めざそう！", "まちがえた字を 練習すれば もっと のびるよ！"] }
     : { stars: 0, mark: "seed", title: "ナイスチャレンジ！", face: "🐣", words: ["さいごまで よく がんばったね！", "まちがえた字を 練習すれば ぐんぐん のびるよ！"] };
   const word = tier.words[Math.floor(Math.random() * tier.words.length)];
