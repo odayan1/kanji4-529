@@ -292,13 +292,10 @@ function home() {
     <div class="card unit"><div><div class="tt">📖 漢字じてん</div><div class="no">5〜29で ならう 漢字 ${Object.keys(DICT).length}字（読み方・意味・熟語・書き順）</div></div>
       <div class="btns"><button class="btn y" id="goDict">ひらく</button></div></div>
     <label class="toggle"><input type="checkbox" id="shuf" ${ALL.shuffle ? "checked" : ""}> 問題の順番を まぜる</label>
-    <button class="link" id="reset">このスマホの 記録を リセット</button>
-    ${TRY ? "" : `<button class="link" id="logout">IDを 入れなおす</button>`}
-    <div class="foot">※ 問題文は 漢字ドリル（光村図書 4年下 準拠）5〜29 より。答えの字は 教科書体に近い「Klee One」で表示しています。<br>※ 書き順アニメーションは KanjiVG（CC BY-SA 3.0, Ulrich Apel）を元にしています。字の形は 上の大きな字（教科書体）を見てね。</div>`;
+    <button class="link" id="reset">このスマホの 記録を リセット</button>    <div class="foot">※ 問題文は 漢字ドリル（光村図書 4年下 準拠）5〜29 より。答えの字は 教科書体に近い「Klee One」で表示しています。<br>※ 書き順アニメーションは KanjiVG（CC BY-SA 3.0, Ulrich Apel）を元にしています。字の形は 上の大きな字（教科書体）を見てね。</div>`;
   $app.innerHTML = h; bindHome();
 }
 function bindHome() {
-  const lo = document.getElementById("logout"); if (lo) lo.onclick = () => { if (confirm("IDを 入れなおす？")) { ALL.cur = null; save(); home(); } };
   const td = document.getElementById("tdate"); if (td) td.onchange = () => { me().test = td.value; save(); home(); };
   const sh = document.getElementById("shuf"); if (sh) sh.onchange = () => { ALL.shuffle = sh.checked; save(); };
   const rs = document.getElementById("reset"); if (rs) rs.onclick = () => { if (confirm("このスマホの 記録を 消してもいい？")) { ALL.data[ALL.cur] = { r: {}, w: {}, test: me().test }; save(); home(); } };
