@@ -112,6 +112,36 @@ h1{font-size:22px;margin:6px 0 2px;font-weight:800}
 .dr u{text-decoration:none;border-bottom:3px solid var(--main);color:#b8321a}
 .dr .sub{font-family:"M PLUS Rounded 1c";margin-left:4px}
 .wk{color:#b45309;font-weight:800}
+.tmr{font-weight:800;font-size:15px;color:#2563eb;background:#e0ecff;border-radius:999px;padding:2px 10px;font-variant-numeric:tabular-nums;white-space:nowrap}
+.res-top{background:linear-gradient(180deg,#fff1c2,#ffe0d1);border-radius:20px;padding:14px 12px 16px;text-align:center;box-shadow:0 3px 0 #f3c9a8;position:relative;overflow:hidden}
+.mark{position:relative;width:230px;height:230px;margin:4px auto 0}
+.hm{position:absolute;inset:0;width:100%;height:100%}
+.seed{position:absolute;inset:0;font-size:110px;line-height:230px;opacity:.35;animation:pop .6s both}
+.sc{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:76px;color:#c2410c;text-shadow:0 3px 0 #fff,0 0 12px #fff;font-variant-numeric:tabular-nums}
+.sc small{font-size:24px;margin:28px 0 0 2px}
+.stars{font-size:46px;letter-spacing:6px;margin-top:-6px}
+.st{display:inline-block;color:#e5d6c0;animation:pop .45s both}
+.st.on{color:#f59e0b;text-shadow:0 2px 0 #b45309}
+.rtitle{font-size:30px;font-weight:800;color:#be123c;animation:pop .5s 1.9s both}
+.badge{display:inline-block;margin:6px 4px 0;padding:6px 12px;border-radius:999px;font-weight:800;font-size:15px;animation:pop .5s 2.1s both}
+.b1{background:#fde047;color:#7c2d12}.b2{background:#bae6fd;color:#075985}
+.talk{display:flex;align-items:center;gap:8px;justify-content:center;margin-top:12px;animation:pop .5s 2.3s both}
+.face{font-size:46px}
+.bub{background:#fff;border-radius:16px;padding:10px 12px;font-weight:800;font-size:16px;position:relative;text-align:left;max-width:240px}
+.bub::before{content:"";position:absolute;left:-8px;top:50%;margin-top:-8px;border:8px solid transparent;border-right-color:#fff;border-left:0}
+.tiles{display:grid;grid-template-columns:1fr 1fr 1.3fr;gap:8px;margin-top:12px}
+.tile{background:#fff;border-radius:14px;padding:8px 4px;text-align:center;box-shadow:0 2px 0 var(--line)}
+.tile span{display:block;font-size:12px;color:var(--sub);font-weight:800}
+.tile b{font-size:30px;color:var(--ink)}.tile small{color:var(--sub)}
+.hist{display:flex;align-items:flex-end;gap:6px;height:110px;margin-top:6px}
+.hb{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;font-size:11px;color:var(--sub)}
+.hb i{display:block;width:70%;background:#fcd9b6;border-radius:6px 6px 0 0}
+.hb b{font-size:12px;color:var(--ink)}
+.hb.now i{background:var(--main)}.hb.now b{color:var(--main)}
+.cfbox{position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:50}
+.cfbox i{position:absolute;top:-20px;border-radius:2px;animation:fall linear forwards}
+@keyframes fall{to{transform:translate(var(--dx),110vh) rotate(var(--rot))}}
+@keyframes pop{0%{transform:scale(0);opacity:0}70%{transform:scale(1.2);opacity:1}100%{transform:scale(1)}}
 </style>
 </head>
 <body>
@@ -257,7 +287,7 @@ function home() {
       <div class="btns"><button class="btn y" data-go="r:weak">読み</button><button class="btn" data-go="w:weak">書き</button></div></div>
     <div class="card unit" style="border:3px solid var(--main)"><div><div class="tt">📝 テストモード</div>
       <div class="no">読み 10問 ＋ 書き 40問（100点まんてん）。同じ漢字は 1回だけ。毎回 ちがう問題が ランダムに出るよ</div>
-      ${tests.length ? `<div class="no" style="margin-top:6px">これまで：${tests.slice(-5).reverse().map(t => `${esc(t.d)} <b>${t.s}点</b>`).join("　")}</div>` : ""}</div>
+      ${tests.length ? `<div class="no" style="margin-top:6px">これまで：${tests.slice(-5).reverse().map(t => `${esc(t.d)} <b>${t.s}点</b>${t.t ? `（${clock(t.t * 1000)}）` : ""}`).join("　")}</div>` : ""}</div>
       <div class="btns"><button class="btn" id="goTest">テスト</button></div></div>
     <div class="card unit"><div><div class="tt">📖 漢字じてん</div><div class="no">5〜29で ならう 漢字 ${Object.keys(DICT).length}字（読み方・意味・熟語・書き順）</div></div>
       <div class="btns"><button class="btn y" id="goDict">ひらく</button></div></div>
@@ -299,6 +329,7 @@ function testIntro() {
   <div class="card center"><div class="prep">📝</div>
   <div style="font-size:20px;font-weight:800;line-height:1.7">テスト（100点まんてん）</div>
   <div class="tip" style="margin-top:10px;text-align:left">
+    ⏱ <b>タイマー</b>：「はじめる」を おすと スタート。書きの40問目まで はかるよ（答え合わせの時間は 入らない）<br>
     ① <b>読み 10問</b>：ひらがなで 入れる（答えは さいごに わかる）<br>
     ② <b>書き 40問</b>：ノートに <b>1〜40 の番号</b>を書いて、そこに 漢字を書く<br>
     ③ さいごに <b>答え合わせ</b>：書きは 自分で ○△× をつける（○だけ 点になる）<br>
@@ -312,8 +343,14 @@ function testIntro() {
     window.scrollTo(0, 0); testShow();
   };
 }
+// ---- タイマー（読み・書きを とくあいだ だけ 動く。答え合わせの時間は 入れない） ----
+const clock = ms => { const s = Math.floor(ms / 1000); return Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0"); };
+const clockJ = ms => { const s = Math.round(ms / 1000); return Math.floor(s / 60) + "分" + String(s % 60).padStart(2, "0") + "秒"; };
+const tElapsed = () => T ? (T.tEnd || Date.now()) - T.t0 : 0;
+setInterval(() => { const el = document.getElementById("tm"); if (el && T && !T.tEnd) el.textContent = clock(tElapsed()); }, 250);
 function tBar(cur, tot, label) {
-  return `<div class="top"><button class="x" id="quit">×</button><div class="pbar"><i style="width:${cur / tot * 100}%"></i></div><div class="qn">${label}</div></div>`;
+  const timer = T && (T.ph === "r" || T.ph === "w") && !T.tEnd ? `<div class="tmr">⏱ <span id="tm">${clock(tElapsed())}</span></div>` : "";
+  return `<div class="top"><button class="x" id="quit">×</button><div class="pbar"><i style="width:${cur / tot * 100}%"></i></div>${timer}<div class="qn">${label}</div></div>`;
 }
 function tQuit() { document.getElementById("quit").onclick = () => { if (confirm("テストを やめる？（点数は 出ないよ）")) home(); }; }
 function testShow() {
@@ -366,8 +403,10 @@ function testWIntro() {
   document.getElementById("go").onclick = testShow;
 }
 function testCheckIntro() {
+  if (!T.tEnd) T.tEnd = Date.now();
   $app.innerHTML = tBar(50, 50, "答え合わせ") + `<div class="card center"><div class="prep">🔍</div>
     <div style="font-size:20px;font-weight:800;line-height:1.7">ぜんぶ おわり！<br>つぎは 答え合わせ</div>
+    <div style="font-size:18px;font-weight:800;color:#2563eb;margin:6px 0">⏱ かかった時間 ${clockJ(tElapsed())}</div>
     <div class="tip" style="text-align:left">1問ずつ 答えが 出るよ。ノートと くらべて、<b>とめ・はね・はらい</b>まで 見て、○△× を つけよう。<br>△（形が あやしい）は 点に ならないよ。</div>
     <button class="btn big" id="go">答え合わせ スタート</button></div>`;
   tQuit();
@@ -399,27 +438,85 @@ function testResult() {
   // 練習モードの進み具合にも反映（練習にある問題だけ）
   T.r.forEach((it, i) => { if (!it.id.startsWith("x")) d.r[it.id] = rOk[i] ? 1 : 0; });
   T.w.forEach((it, i) => { if (!it.id.startsWith("x")) d.w[it.id] = T.wg[i]; });
-  const dt = new Date();
-  d.tests = (d.tests || []).concat([{ d: `${dt.getMonth() + 1}/${dt.getDate()}`, s: score, r: rs, w: ws }]).slice(-30);
+  const dt = new Date(), ms = tElapsed(), sec = Math.round(ms / 1000);
+  const prev = d.tests || [];
+  const bestS = prev.length ? Math.max(...prev.map(t => t.s)) : null;
+  const prevT = prev.filter(t => t.t > 0).map(t => t.t);
+  const bestT = prevT.length ? Math.min(...prevT) : null;
+  d.tests = prev.concat([{ d: `${dt.getMonth() + 1}/${dt.getDate()}`, s: score, r: rs, w: ws, t: sec }]).slice(-30);
   save();
-  QLOG.done({ sec: "テスト", ok: rs + ws, n: 50, of: 50, wrong: T.r.filter((x, i) => !rOk[i]).map(x => "r:" + x.id).concat(T.w.filter((x, i) => T.wg[i] !== "o").map(x => "w:" + x.id)), ms: Date.now() - T.t0 });
+  QLOG.done({ sec: "テスト", ok: rs + ws, n: 50, of: 50, wrong: T.r.filter((x, i) => !rOk[i]).map(x => "r:" + x.id).concat(T.w.filter((x, i) => T.wg[i] !== "o").map(x => "w:" + x.id)), ms });
   const missR = T.r.filter((x, i) => !rOk[i]), missW = T.w.filter((x, i) => T.wg[i] !== "o");
-  const msg = score === 100 ? "パーフェクト！🎉" : score >= 90 ? "すばらしい！" : score >= 70 ? "よくできました！" : "まちがえた字を 練習しよう";
-  $app.innerHTML = `<div class="card center"><div class="sub">テストの けっか</div>
-    <div class="score">${score} <span style="font-size:22px">点</span></div><div style="font-size:20px;font-weight:800">${msg}</div>
-    <div class="tip" style="margin-top:10px;text-align:left">読み：<b>${rs}</b> / 10　　書き：○ <b>${ws}</b>　△ ${wt}　× ${40 - ws - wt} / 40<br>（1問 2点）</div>
+  // ランク（星・はなまる・ことば）
+  const tier = score === 100 ? { stars: 3, mark: "hana", title: "パーフェクト！", face: "🦁", words: ["ぜんぶ せいかい！ 漢字はかせだ！", "100点！ 先生も びっくり！"] }
+    : score >= 90 ? { stars: 3, mark: "hana", title: "すばらしい！", face: "🐯", words: ["あと ちょっとで 100点！", "すごい！ 漢字マスターまで あと一歩！"] }
+    : score >= 70 ? { stars: 2, mark: "maru", title: "よくできました！", face: "🐶", words: ["いい ちょうし！ この まま いこう！", "ぐんぐん のびてるよ！"] }
+    : score >= 50 ? { stars: 1, mark: "maru", title: "いいかんじ！", face: "🐱", words: ["半分 こえたね！ つぎは 70点を めざそう！", "まちがえた字を 練習すれば もっと のびるよ！"] }
+    : { stars: 0, mark: "seed", title: "ナイスチャレンジ！", face: "🐣", words: ["さいごまで よく がんばったね！", "まちがえた字を 練習すれば ぐんぐん のびるよ！"] };
+  const word = tier.words[Math.floor(Math.random() * tier.words.length)];
+  const newBest = bestS !== null && score > bestS, firstTry = bestS === null;
+  const fastBest = bestT !== null && sec < bestT && score >= 60;
+  const hist = d.tests.slice(-7);
+  const bars = hist.map((t, i) => `<div class="hb${i === hist.length - 1 ? " now" : ""}"><b>${t.s}</b><i style="height:${Math.max(4, t.s * 0.7)}px"></i><span>${esc(t.d)}</span></div>`).join("");
+  $app.innerHTML = `<div class="res">
+    <div class="res-top"><div class="sub" style="color:#7c2d12">テストの けっか</div>
+      <div class="mark">${tier.mark === "seed" ? `<div class="seed">🌱</div>` : `<svg viewBox="0 0 240 240" class="hm"><path id="hmp" d="${hanamaruPath(tier.mark === "hana")}" fill="none" stroke="#e11d48" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/></svg>`}
+        <div class="sc"><span id="scn">0</span><small>点</small></div></div>
+      <div class="stars">${[0, 1, 2].map(i => `<span class="st ${i < tier.stars ? "on" : ""}" style="animation-delay:${1.3 + i * 0.25}s">★</span>`).join("")}</div>
+      <div class="rtitle">${tier.title}</div>
+      ${newBest ? `<div class="badge b1">🎉 じこベスト こうしん！（まえは ${bestS}点）</div>` : ""}${firstTry ? `<div class="badge b1">🎊 はじめての テスト、おつかれさま！</div>` : ""}${fastBest ? `<div class="badge b2">⚡ タイム じこベスト！</div>` : ""}
+      <div class="talk"><span class="face">${tier.face}</span><div class="bub">${esc(word)}</div></div>
+    </div>
+    <div class="tiles"><div class="tile"><span>読み</span><b>${rs}</b><small>/10</small></div><div class="tile"><span>書き ○</span><b>${ws}</b><small>/40</small></div><div class="tile"><span>⏱ 時間</span><b style="font-size:20px">${clockJ(ms)}</b></div></div>
+    <div class="sub center" style="margin-top:4px">書き △ ${wt}・× ${40 - ws - wt}（1問 2点。○だけ 点になるよ）</div>
+    ${hist.length > 1 ? `<div class="card"><div style="font-weight:800;font-size:14px">これまでの きろく</div><div class="hist">${bars}</div></div>` : ""}
+    <div class="card">
     ${missR.length ? `<div style="font-weight:800;margin-top:14px;text-align:left">読みで まちがえた問題</div><ul class="mlist">${T.r.map((x, i) => rOk[i] ? "" : `<li>${esc(x.k)}${esc(x.oku)}<span>正しくは ${esc(x.yomi + x.oku)}${T.ra[i] ? "／きみの答え " + esc(T.ra[i]) : ""}</span></li>`).join("")}</ul>` : ""}
     ${missW.length ? `<div style="font-weight:800;margin-top:14px;text-align:left">書きで △・× だった問題</div><ul class="mlist">${missW.map(x => `<li>${esc(x.k)}${esc(x.oku)}<span>${esc(x.yomi + x.oku)}</span></li>`).join("")}</ul>` : ""}
     <div class="row2" style="margin-top:12px">
       ${missR.length ? `<button class="btn y" id="prR">読みの まちがいを<br>練習</button>` : ""}
       ${missW.length ? `<button class="btn" id="prW">書きの △× を<br>練習</button>` : ""}
       <button class="btn" id="again" style="background:#7c3aed">もう一回<br>テスト</button>
-      <button class="btn g" id="home">ホームへ</button></div></div>`;
+      <button class="btn g" id="home">ホームへ</button></div></div></div>`;
+  window.scrollTo(0, 0);
+  // はなまるを 描く → 点数を カウントアップ → 紙ふぶき
+  const hp = document.getElementById("hmp");
+  if (hp) { const L = hp.getTotalLength(); hp.style.strokeDasharray = L; hp.style.strokeDashoffset = L; requestAnimationFrame(() => requestAnimationFrame(() => { hp.style.transition = "stroke-dashoffset 1.3s ease-out"; hp.style.strokeDashoffset = 0; })); }
+  const scn = document.getElementById("scn"), t0 = performance.now();
+  const tick = now => { const p = Math.min(1, (now - t0) / 1200); scn.textContent = Math.round(score * (1 - Math.pow(1 - p, 3))); if (p < 1) requestAnimationFrame(tick); };
+  requestAnimationFrame(tick);
+  setTimeout(() => confetti(score === 100 ? 160 : score >= 90 ? 110 : score >= 70 ? 70 : newBest || fastBest ? 50 : 30), 900);
   document.getElementById("home").onclick = home;
   document.getElementById("again").onclick = testIntro;
   const practice = (mode, list) => { S = { mode, target: "miss", title: "テストの まちがい", q: list.map(it => ({ it })), i: 0, ok: 0, answered: 0, firstTotal: list.length, miss: [], t0: Date.now() }; mode === "w" ? prep() : show(); };
   const pr = document.getElementById("prR"); if (pr) pr.onclick = () => practice("r", missR);
   const pw = document.getElementById("prW"); if (pw) pw.onclick = () => practice("w", missW);
+}
+
+// はなまる（うずまき＋花びら）の線
+function hanamaruPath(petals) {
+  const c = 120, pts = [];
+  if (!petals) { // まる：赤ペンの ◯（少し かさねて 1周ちょっと）
+    for (let t = -1.9; t <= 2 * Math.PI - 1.5; t += 0.03) { const r = 92 + 6 * Math.sin(t * 1.3); pts.push([c + r * Math.cos(t), c + r * 0.93 * Math.sin(t)]); }
+    return "M" + pts.map(p => p[0].toFixed(1) + " " + p[1].toFixed(1)).join(" L");
+  }
+  for (let t = 0; t <= 6 * Math.PI; t += 0.06) { const r = 4 + t * 3.9; pts.push([c + r * Math.cos(t), c + r * Math.sin(t)]); }
+  if (petals) for (let t = 0; t <= 2 * Math.PI + 0.01; t += 0.02) { const r = 78 + 30 * Math.abs(Math.sin(3.5 * t)); pts.push([c + r * Math.cos(t), c + r * Math.sin(t)]); }
+  return "M" + pts.map(p => p[0].toFixed(1) + " " + p[1].toFixed(1)).join(" L");
+}
+// 紙ふぶき
+function confetti(n) {
+  const cols = ["#ef4444", "#f59e0b", "#10b981", "#3b82f6", "#8b5cf6", "#ec4899", "#facc15"];
+  const box = document.createElement("div"); box.className = "cfbox"; document.body.appendChild(box);
+  for (let i = 0; i < n; i++) {
+    const s = document.createElement("i");
+    s.style.left = Math.random() * 100 + "vw"; s.style.background = cols[i % cols.length];
+    s.style.animationDuration = (2.2 + Math.random() * 2) + "s"; s.style.animationDelay = (Math.random() * 0.8) + "s";
+    s.style.width = (6 + Math.random() * 6) + "px"; s.style.height = (8 + Math.random() * 8) + "px";
+    s.style.setProperty("--dx", (Math.random() * 120 - 60) + "px"); s.style.setProperty("--rot", (Math.random() * 900 - 450) + "deg");
+    box.appendChild(s);
+  }
+  setTimeout(() => box.remove(), 5500);
 }
 
 // ====================== 漢字じてん ======================
