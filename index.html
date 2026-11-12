@@ -91,11 +91,34 @@ h1{font-size:22px;margin:6px 0 2px;font-weight:800}
 .row2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .toggle{font-size:14px;color:var(--sub);display:flex;align-items:center;gap:6px;margin-top:6px}
 .hidden{display:none}
+.dsec{font-weight:800;margin:16px 2px 6px;font-size:14px;color:var(--sub)}
+.dgrid{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}
+.dk{background:#fff;border:2px solid var(--line);border-radius:12px;padding:6px 0 4px;font-family:"Klee One",serif;font-weight:600;font-size:34px;line-height:1.1;color:var(--ink);display:flex;flex-direction:column;align-items:center}
+.dk small{font-family:"M PLUS Rounded 1c";font-size:10px;color:var(--sub);font-weight:500}
+.nr{display:flex;align-items:center;gap:12px;padding:8px 0;border-bottom:1px dashed var(--line);font-size:15px}
+.nr:last-child{border-bottom:0}
+.nrk{font-family:"Klee One",serif;font-weight:600;font-size:36px;width:44px;text-align:center}
+.dhead{display:flex;gap:14px;align-items:center}
+.dbig{font-family:"Klee One",serif;font-weight:600;font-size:96px;line-height:1;width:120px;height:120px;display:flex;align-items:center;justify-content:center;border:2px dashed #e3c9a8;border-radius:10px;background:#fffdf8;flex:none}
+.dinfo{font-size:17px;line-height:1.8}
+.tag{display:inline-block;font-size:12px;font-weight:800;color:#fff;border-radius:6px;padding:0 6px;margin-right:4px}
+.tag.on{background:#3b82c4}.tag.kun{background:var(--main)}
+.okr{color:#b0a596}
+.dlab{font-weight:800;font-size:13px;color:var(--sub);margin:12px 0 4px}
+.dm{margin:0;padding-left:22px;font-size:15px;line-height:1.7}
+.dj{display:flex;flex-wrap:wrap;gap:6px}
+.dj span{background:#fff3d6;border-radius:8px;padding:4px 10px;font-family:"Klee One",serif;font-weight:600;font-size:18px}
+.dr{font-family:"Klee One",serif;font-weight:600;font-size:18px;padding:4px 0;line-height:1.6}
+.dr u{text-decoration:none;border-bottom:3px solid var(--main);color:#b8321a}
+.dr .sub{font-family:"M PLUS Rounded 1c";margin-left:4px}
+.wk{color:#b45309;font-weight:800}
 </style>
 </head>
 <body>
 <div class="wrap" id="app"></div>
 <script src="items.js"></script>
+<script src="extra.js"></script>
+<script src="dict.js"></script>
 <script src="notes.js"></script>
 <script src="strokes.js"></script>
 <script>
@@ -113,6 +136,14 @@ for (const u of UNITS) u.items.forEach((s, i) => {
   ITEMS.push(it);
 });
 const byUnit = id => ITEMS.filter(x => x.unit === id);
+// テスト・じてん用：練習の問題＋ドリル「おぼえる」ページの例文
+const POOL = ITEMS.slice();
+for (const uid in EXTRA) EXTRA[uid].forEach((s, i) => {
+  const [pre, k, oku, post, yomi, src] = s.split("|");
+  POOL.push({ id: "x" + uid + "-" + i, unit: uid, pre, k, oku, post, yomi, src, weak: [...k].some(c => WEAK.includes(c)) });
+});
+// テストで「1回だけ」にする単位＝このドリルで習う漢字（新出43字）＋とくべつな読みのことば
+const testKeys = it => { const ks = [...new Set([...it.k].filter(c => NEW_KANJI.includes(c)))]; if (SPECIAL_WORDS.includes(it.k)) ks.push("S:" + it.k); return ks; };
 
 // ---- ID（先生が発行したIDだけ使える。名前はアプリに出さない） ----
 const IDS = ["e4n7", "r7r9"];
@@ -151,6 +182,7 @@ const QLOG = (() => {
   const base = () => ({ v: 1, app: APP, sid: ALL.cur || "", dev });
   const L = {
     open() { if (!ON || !ALL.cur) return; post(Object.assign(base(), { st: "done", sec: "ひらいた", ok: 0, n: 0, of: 0, ms: 0 })); },
+    mark(sec) { if (!ON || !ALL.cur) return; post(Object.assign(base(), { st: "done", sec, ok: 0, n: 0, of: 0, ms: 0 })); },
     done(r) { if (!ON || !ALL.cur) return; pending = null; post(Object.assign(base(), { st: "done" }, r)); },
     step(r) { if (!ON || !ALL.cur) return; if (r && r.n > 0) pending = Object.assign(base(), { st: "part" }, r); },
     leave() { if (!ON || !pending) return; const body = JSON.stringify(pending); pending = null; try { if (!(navigator.sendBeacon && navigator.sendBeacon(LOG_URL, body))) queue(JSON.parse(body)); } catch (e) {} }
@@ -201,7 +233,14 @@ function home() {
     const diff = Math.round((t - n) / 86400000);
     days = diff > 0 ? `テストまで あと <span class="count">${diff}日</span>` : diff === 0 ? `<span class="count">今日がテスト！がんばれ！</span>` : `テストは おわったよ`;
   }
+  const tests = d.tests || [];
   h += `<div class="card test">📅 テストの日 <input type="date" id="tdate" value="${esc(d.test || "")}"> ${days}</div>
+  <div class="card unit" style="border:3px solid var(--main)"><div><div class="tt">📝 テストモード</div>
+    <div class="no">読み 10問 ＋ 書き 40問（100点まんてん）。同じ漢字は 1回だけ。毎回 ちがう問題が ランダムに出るよ</div>
+    ${tests.length ? `<div class="no" style="margin-top:6px">これまで：${tests.slice(-5).reverse().map(t => `${esc(t.d)} <b>${t.s}点</b>`).join("　")}</div>` : ""}</div>
+    <div class="btns"><button class="btn" id="goTest">テスト</button></div></div>
+  <div class="card unit"><div><div class="tt">📖 漢字じてん</div><div class="no">5〜29で ならう 漢字 ${Object.keys(DICT).length}字（読み方・意味・熟語・書き順）</div></div>
+    <div class="btns"><button class="btn y" id="goDict">ひらく</button></div></div>
   <div class="tip">おすすめの順番：<b>① 読み</b>を ぜんぶ ○ にする → <b>② 書き</b>（ノートに書いてから 答えを見る）。<br>書きは「とめ・はね・はらい」まで しっかり 見よう。</div>`;
   for (const u of UNITS) {
     const its = byUnit(u.id);
@@ -233,6 +272,213 @@ function bindHome() {
   const sh = document.getElementById("shuf"); if (sh) sh.onchange = () => { ALL.shuffle = sh.checked; save(); };
   const rs = document.getElementById("reset"); if (rs) rs.onclick = () => { if (confirm("このスマホの 記録を 消してもいい？")) { ALL.data[ALL.cur] = { r: {}, w: {}, test: me().test }; save(); home(); } };
   $app.querySelectorAll("[data-go]").forEach(b => b.onclick = () => { const [m, t] = b.dataset.go.split(":"); start(m, t); });
+  const gt = document.getElementById("goTest"); if (gt) gt.onclick = testIntro;
+  const gd = document.getElementById("goDict"); if (gd) gd.onclick = () => { QLOG.mark("じてん"); dictList(""); };
+}
+
+// ====================== テストモード ======================
+// 読み10問＋書き40問。習う漢字（とくべつな読みのことば）は 1回しか出ない。毎回ランダム。
+function buildTest() {
+  for (let t = 0; t < 400; t++) {
+    const cand = shuffle(POOL.slice()), used = new Set(), pick = [];
+    for (const it of cand) {
+      const ks = testKeys(it);
+      if (!ks.length || ks.some(k => used.has(k))) continue;
+      ks.forEach(k => used.add(k)); pick.push(it);
+      if (pick.length === 50) break;
+    }
+    if (pick.length === 50) { shuffle(pick); return { r: pick.slice(0, 10), w: pick.slice(10) }; }
+  }
+  return null;
+}
+let T = null;
+function testIntro() {
+  QLOG.leave();
+  $app.innerHTML = `<div class="top"><button class="x" id="quit">×</button><div class="sub">テストモード</div></div>
+  <div class="card center"><div class="prep">📝</div>
+  <div style="font-size:20px;font-weight:800;line-height:1.7">テスト（100点まんてん）</div>
+  <div class="tip" style="margin-top:10px;text-align:left">
+    ① <b>読み 10問</b>：ひらがなで 入れる（答えは さいごに わかる）<br>
+    ② <b>書き 40問</b>：ノートに <b>1〜40 の番号</b>を書いて、そこに 漢字を書く<br>
+    ③ さいごに <b>答え合わせ</b>：書きは 自分で ○△× をつける（○だけ 点になる）<br>
+    ・同じ漢字は 1回しか 出ないよ。とちゅうで 答えは 見られないよ。</div>
+  <div style="font-size:16px;font-weight:800;margin-top:12px">ノート（紙）と えんぴつを 用意してね！</div>
+  <button class="btn big" id="tgo">用意できた！ はじめる</button></div>`;
+  document.getElementById("quit").onclick = home;
+  document.getElementById("tgo").onclick = () => {
+    const b = buildTest(); if (!b) { alert("問題を作れませんでした。もう一回 おしてね"); return; }
+    T = { r: b.r, w: b.w, ra: [], ph: "r", i: 0, t0: Date.now(), wg: [], sk: [] };
+    window.scrollTo(0, 0); testShow();
+  };
+}
+function tBar(cur, tot, label) {
+  return `<div class="top"><button class="x" id="quit">×</button><div class="pbar"><i style="width:${cur / tot * 100}%"></i></div><div class="qn">${label}</div></div>`;
+}
+function tQuit() { document.getElementById("quit").onclick = () => { if (confirm("テストを やめる？（点数は 出ないよ）")) home(); }; }
+function testShow() {
+  // とちゅうで やめたときに「途中」を送れるように（何問まで進んだか）
+  const done = T.ph === "r" ? T.i : T.ph === "w" ? 10 + T.i : 50;
+  QLOG.step({ sec: "テスト", ok: 0, n: done, of: 50, ms: Date.now() - T.t0 });
+  if (T.ph === "r") {
+    if (T.i >= 10) { T.ph = "w"; T.i = 0; return testWIntro(); }
+    const it = T.r[T.i];
+    $app.innerHTML = tBar(T.i, 50, `読み ${T.i + 1}/10`) + `<div class="card"><span class="mode">読み ${T.i + 1}</span>
+      <div class="sent">${esc(it.pre)}<u>${esc(it.k)}</u>${esc(it.oku)}${esc(it.post)}</div>
+      <div class="sub" style="margin-bottom:8px">線の ついた 漢字の 読みを ひらがなで</div>
+      <input class="ans" id="ans" autocomplete="off" autocapitalize="off" spellcheck="false" lang="ja" placeholder="ひらがなで" value="${esc(T.ra[T.i] || "")}">
+      <div class="hint hidden" id="hint">ひらがなで 入れてね</div>
+      <button class="btn big y" id="go">つぎへ</button>
+      <div class="row2" style="margin-top:6px"><button class="btn g" id="back" ${T.i ? "" : "disabled"}>← もどる</button><button class="btn g" id="skip">わからない</button></div></div>`;
+    tQuit();
+    const inp = document.getElementById("ans"); setTimeout(() => inp.focus(), 50);
+    const go = (blank) => {
+      const v = blank ? "" : inp.value;
+      if (!blank && !v.trim()) return;
+      if (!blank && [...v].some(isKanji)) { document.getElementById("hint").classList.remove("hidden"); return; }
+      T.ra[T.i] = v; T.i++; testShow();
+    };
+    document.getElementById("go").onclick = () => go(false);
+    document.getElementById("skip").onclick = () => go(true);
+    document.getElementById("back").onclick = () => { T.ra[T.i] = inp.value; T.i--; testShow(); };
+    inp.addEventListener("keydown", e => { if (e.key === "Enter" && !e.isComposing) { e.preventDefault(); go(false); } });
+  } else if (T.ph === "w") {
+    if (T.i >= 40) { T.ph = "c"; T.i = 0; return testCheckIntro(); }
+    const it = T.w[T.i];
+    $app.innerHTML = tBar(10 + T.i, 50, `書き ${T.i + 1}/40`) + `<div class="card"><span class="mode w">書き</span>
+      <div style="font-size:44px;font-weight:800;color:var(--main);text-align:center;margin-top:6px">（${T.i + 1}）</div>
+      <div class="sent" style="margin-top:4px">${esc(it.pre)}<span class="box">${esc(it.yomi + it.oku)}</span>${esc(it.post)}</div>
+      <div class="sub">ノートの（${T.i + 1}）に 漢字で 書こう${it.oku ? "（<b>送りがな</b>も）" : ""}</div>
+      <button class="btn big" id="go">書けた → つぎへ</button>
+      <div class="row2" style="margin-top:6px"><button class="btn g" id="back" ${T.i ? "" : "disabled"}>← もどる</button><button class="btn g" id="skip">わからない（とばす）</button></div></div>`;
+    tQuit();
+    document.getElementById("go").onclick = () => { T.sk[T.i] = false; T.i++; testShow(); window.scrollTo(0, 0); };
+    document.getElementById("skip").onclick = () => { T.sk[T.i] = true; T.i++; testShow(); window.scrollTo(0, 0); };
+    document.getElementById("back").onclick = () => { T.i--; testShow(); };
+  } else testCheck();
+}
+function testWIntro() {
+  $app.innerHTML = tBar(10, 50, "書きへ") + `<div class="card center"><div class="prep">✏️</div>
+    <div style="font-size:20px;font-weight:800;line-height:1.7">つぎは 書き 40問</div>
+    <div class="tip" style="text-align:left">ノートに（1）〜（40）の 番号を 書いて、その番号のところに 漢字を 書こう。<br>わからない問題は「とばす」で OK。</div>
+    <button class="btn big" id="go">はじめる</button></div>`;
+  tQuit();
+  document.getElementById("go").onclick = testShow;
+}
+function testCheckIntro() {
+  $app.innerHTML = tBar(50, 50, "答え合わせ") + `<div class="card center"><div class="prep">🔍</div>
+    <div style="font-size:20px;font-weight:800;line-height:1.7">ぜんぶ おわり！<br>つぎは 答え合わせ</div>
+    <div class="tip" style="text-align:left">1問ずつ 答えが 出るよ。ノートと くらべて、<b>とめ・はね・はらい</b>まで 見て、○△× を つけよう。<br>△（形が あやしい）は 点に ならないよ。</div>
+    <button class="btn big" id="go">答え合わせ スタート</button></div>`;
+  tQuit();
+  document.getElementById("go").onclick = () => { T.i = 0; testCheck(); };
+}
+function testCheck() {
+  if (T.i >= 40) return testResult();
+  const it = T.w[T.i];
+  const uniq = [...new Set([...it.k].filter(isKanji))];
+  const skipped = !!T.sk[T.i];
+  $app.innerHTML = tBar(T.i, 40, `答え ${T.i + 1}/40`) + `<div class="card"><span class="mode w">（${T.i + 1}）の答え</span>${skipped ? `<span class="weak">とばした問題（×）</span>` : ""}
+    <div class="sent" style="font-size:20px;margin:8px 0 0">${esc(it.pre)}<span class="box">${esc(it.yomi + it.oku)}</span>${esc(it.post)}</div>
+    <div class="answer"><div class="k">${[...it.k].map(c => isKanji(c) ? esc(c) : `<span class="ok2">${esc(c)}</span>`).join("")}<span class="ok2">${esc(it.oku)}</span></div></div>
+    ${WORD_NOTES[it.k] ? `<div class="wn">💡 ${esc(WORD_NOTES[it.k])}</div>` : ""}${it.oku ? `<div class="wn">💡 送りがな「${esc(it.oku)}」まで 書けたかな？</div>` : ""}
+    ${skipped ? `<button class="btn big g" data-g="x">おぼえた！ つぎへ</button>` : `<div class="grade"><button class="g-o" data-g="o"><b>○</b>あってた</button><button class="g-s" data-g="s"><b>△</b>形が<br>あやしい</button><button class="g-x" data-g="x"><b>×</b>ちがう・<br>書けなかった</button></div>`}
+    <button class="link" id="showN">とめ・はね・はらいを 見る ▼</button><div id="nt" class="hidden"></div></div>`;
+  tQuit();
+  document.getElementById("showN").onclick = () => {
+    const nt = document.getElementById("nt"); nt.classList.remove("hidden"); nt.innerHTML = kanjiCardsHTML(uniq); bindKanjiCards(nt, uniq);
+    document.getElementById("showN").classList.add("hidden");
+  };
+  $app.querySelectorAll("[data-g]").forEach(b => b.onclick = () => { T.wg[T.i] = b.dataset.g; T.i++; testCheck(); window.scrollTo(0, 0); });
+}
+function testResult() {
+  const d = me();
+  const rOk = T.r.map((it, i) => isRight(it, T.ra[i] || ""));
+  const rs = rOk.filter(Boolean).length, ws = T.wg.filter(g => g === "o").length, wt = T.wg.filter(g => g === "s").length;
+  const score = (rs + ws) * 2;
+  // 練習モードの進み具合にも反映（練習にある問題だけ）
+  T.r.forEach((it, i) => { if (!it.id.startsWith("x")) d.r[it.id] = rOk[i] ? 1 : 0; });
+  T.w.forEach((it, i) => { if (!it.id.startsWith("x")) d.w[it.id] = T.wg[i]; });
+  const dt = new Date();
+  d.tests = (d.tests || []).concat([{ d: `${dt.getMonth() + 1}/${dt.getDate()}`, s: score, r: rs, w: ws }]).slice(-30);
+  save();
+  QLOG.done({ sec: "テスト", ok: rs + ws, n: 50, of: 50, wrong: T.r.filter((x, i) => !rOk[i]).map(x => "r:" + x.id).concat(T.w.filter((x, i) => T.wg[i] !== "o").map(x => "w:" + x.id)), ms: Date.now() - T.t0 });
+  const missR = T.r.filter((x, i) => !rOk[i]), missW = T.w.filter((x, i) => T.wg[i] !== "o");
+  const msg = score === 100 ? "パーフェクト！🎉" : score >= 90 ? "すばらしい！" : score >= 70 ? "よくできました！" : "まちがえた字を 練習しよう";
+  $app.innerHTML = `<div class="card center"><div class="sub">テストの けっか</div>
+    <div class="score">${score} <span style="font-size:22px">点</span></div><div style="font-size:20px;font-weight:800">${msg}</div>
+    <div class="tip" style="margin-top:10px;text-align:left">読み：<b>${rs}</b> / 10　　書き：○ <b>${ws}</b>　△ ${wt}　× ${40 - ws - wt} / 40<br>（1問 2点）</div>
+    ${missR.length ? `<div style="font-weight:800;margin-top:14px;text-align:left">読みで まちがえた問題</div><ul class="mlist">${T.r.map((x, i) => rOk[i] ? "" : `<li>${esc(x.k)}${esc(x.oku)}<span>正しくは ${esc(x.yomi + x.oku)}${T.ra[i] ? "／きみの答え " + esc(T.ra[i]) : ""}</span></li>`).join("")}</ul>` : ""}
+    ${missW.length ? `<div style="font-weight:800;margin-top:14px;text-align:left">書きで △・× だった問題</div><ul class="mlist">${missW.map(x => `<li>${esc(x.k)}${esc(x.oku)}<span>${esc(x.yomi + x.oku)}</span></li>`).join("")}</ul>` : ""}
+    <div class="row2" style="margin-top:12px">
+      ${missR.length ? `<button class="btn y" id="prR">読みの まちがいを<br>練習</button>` : ""}
+      ${missW.length ? `<button class="btn" id="prW">書きの △× を<br>練習</button>` : ""}
+      <button class="btn" id="again" style="background:#7c3aed">もう一回<br>テスト</button>
+      <button class="btn g" id="home">ホームへ</button></div></div>`;
+  document.getElementById("home").onclick = home;
+  document.getElementById("again").onclick = testIntro;
+  const practice = (mode, list) => { S = { mode, target: "miss", title: "テストの まちがい", q: list.map(it => ({ it })), i: 0, ok: 0, answered: 0, firstTotal: list.length, miss: [], t0: Date.now() }; mode === "w" ? prep() : show(); };
+  const pr = document.getElementById("prR"); if (pr) pr.onclick = () => practice("r", missR);
+  const pw = document.getElementById("prW"); if (pw) pw.onclick = () => practice("w", missW);
+}
+
+// ====================== 漢字じてん ======================
+const hira = s => norm(s || "").replace(/\./g, "");
+function dictList(q) {
+  QLOG.leave();
+  const query = (q || "").trim(), qh = hira(query);
+  const hit = c => { if (!query) return true; const e = DICT[c]; if (c === query || query.includes(c)) return true;
+    return [e.on, e.kun, e.bu, ...e.j, ...e.m].some(s => hira(s).includes(qh)); };
+  let h = `<div class="top"><button class="x" id="back">←</button><div style="font-weight:800;font-size:18px">📖 漢字じてん</div></div>
+    <div style="display:flex;gap:6px"><input class="ans" id="dq" placeholder="さがす（漢字・読み・ことば）" value="${esc(query)}" style="font-size:18px">
+    <button class="btn y" id="dqb" style="flex:none">🔍</button></div>
+    ${query ? `<button class="link" id="dqc" style="margin-top:6px">ぜんぶ 表示に もどす</button>` : ""}`;
+  let n = 0;
+  for (const [uid, chars] of DICT_UNITS) {
+    const cs = [...chars].filter(hit); if (!cs.length) continue; n += cs.length;
+    const u = UNITS.find(x => x.id === uid);
+    h += `<div class="dsec">ドリル ${esc(u.no)}　${esc(u.title)}</div><div class="dgrid">${cs.map(c => `<button class="dk" data-k="${esc(c)}">${esc(c)}<small>${esc(DICT[c].on.split("・")[0] || "")}</small></button>`).join("")}</div>`;
+  }
+  const nr = DICT_NEWREAD.filter(x => !query || x.c === query || hira(x.y).includes(qh) || x.w.includes(query) || hira(x.w).includes(qh));
+  if (nr.length) h += `<div class="dsec">読み方が 新しい 漢字</div><div class="card" style="padding:6px 12px">${nr.map(x => `<div class="nr"><span class="nrk">${esc(x.c)}</span><div><b>${esc(x.y.replace(".", ""))}</b>　${esc(x.w)}<div class="sub">前に ならった読み：${esc(x.old.replace(/\./g, ""))}</div></div></div>`).join("")}</div>`;
+  const sp = DICT_SPECIAL.filter(x => !query || x.w.includes(query) || x.y.includes(qh));
+  if (sp.length) h += `<div class="dsec">とくべつな 読み方の ことば</div><div class="card" style="padding:6px 12px">${sp.map(x => `<div class="nr"><span class="nrk" style="font-size:30px;width:auto">${esc(x.w)}</span><div><b>${esc(x.y)}</b></div></div>`).join("")}</div>`;
+  if (!n && !nr.length && !sp.length) h += `<div class="tip" style="margin-top:12px">見つからなかったよ。ほかの ことばで さがしてね。</div>`;
+  $app.innerHTML = `<div id="dictview">${h}</div>`;
+  document.getElementById("back").onclick = home;
+  const dq = document.getElementById("dq");
+  dq.addEventListener("keydown", e => { if (e.key === "Enter" && !e.isComposing) { e.preventDefault(); dictList(dq.value); } });
+  document.getElementById("dqb").onclick = () => dictList(dq.value);
+  const dqc = document.getElementById("dqc"); if (dqc) dqc.onclick = () => dictList("");
+  $app.querySelectorAll("[data-k]").forEach(b => b.onclick = () => dictDetail(b.dataset.k, query));
+  if (query) { dq.focus(); dq.setSelectionRange(dq.value.length, dq.value.length); }
+}
+function kunHTML(k) { return k ? k.split("・").map(s => { const [a, b] = s.split("."); return `${esc(a)}${b ? `<span class="okr">${esc(b)}</span>` : ""}`; }).join("・") : "―"; }
+function dictDetail(c, q) {
+  const e = DICT[c], all = DICT_UNITS.map(x => x[1]).join("");
+  const i = all.indexOf(c), prev = all[i - 1], nxt = all[i + 1];
+  const uid = DICT_UNITS.find(x => x[1].includes(c))[0], u = UNITS.find(x => x.id === uid);
+  const qs = [...new Map(POOL.filter(it => it.k.includes(c)).map(it => [it.pre + it.k + it.oku + it.post, it])).values()];
+  const hl = it => `${esc(it.pre)}${[...it.k].map(ch => ch === c ? `<u>${esc(ch)}</u>` : esc(ch)).join("")}${esc(it.oku)}${esc(it.post)}`;
+  const h = `<div class="top"><button class="x" id="back">←</button><div class="sub">ドリル ${esc(u.no)}　${esc(u.title)}</div></div>
+    <div class="card"><div class="dhead"><div class="dbig">${esc(c)}</div><div class="dinfo">
+      <div><span class="tag on">音</span> ${esc(e.on || "―")}</div>
+      <div><span class="tag kun">訓</span> ${kunHTML(e.kun)}</div>
+      <div class="sub" style="margin-top:4px">${(STROKES[c] || []).length}画　部首：${esc(e.bu)}</div>
+      ${WEAK.includes(c) ? `<div class="wk" style="margin-top:4px">⚠️ 要注意の字</div>` : ""}</div></div>
+      <div class="dlab">意味</div><ol class="dm">${e.m.map(m => `<li>${esc(m)}</li>`).join("")}</ol>
+      <div class="dlab">熟語</div><div class="dj">${e.j.map(j => `<span>${esc(j)}</span>`).join("")}</div>
+      <div class="dlab">使い方（ドリルの例文）</div>${e.r.map(r => `<div class="dr">${esc(r)}</div>`).join("")}
+    </div>
+    <div style="font-weight:800;margin:6px 2px">書き順と 注意（とめ・はね・はらい）</div>
+    <div id="dc">${kanjiCardsHTML([c], { noHead: true })}</div>
+    <div class="card"><div class="dlab" style="margin-top:0">テストに出る 文（${qs.length}）</div>${qs.map(it => `<div class="dr">${hl(it)}<span class="sub">（${esc(it.yomi + it.oku)}）</span></div>`).join("")}</div>
+    <div class="row2"><button class="btn g" id="pv" ${prev ? "" : "disabled"}>← ${esc(prev || "")}</button><button class="btn g" id="nx" ${nxt ? "" : "disabled"}>${esc(nxt || "")} →</button></div>`;
+  $app.innerHTML = `<div id="dictview">${h}</div>`;
+  bindKanjiCards(document.getElementById("dc"), [c]);
+  document.getElementById("back").onclick = () => dictList(q || "");
+  if (prev) document.getElementById("pv").onclick = () => dictDetail(prev, q);
+  if (nxt) document.getElementById("nx").onclick = () => dictDetail(nxt, q);
+  window.scrollTo(0, 0);
 }
 
 // ---- セッション ----
@@ -332,34 +578,43 @@ function reveal(it) {
   if (WORD_NOTES[it.k]) h += `<div class="wn">💡 ${esc(WORD_NOTES[it.k])}</div>`;
   if (it.oku) h += `<div class="wn">💡 送りがな「${esc(it.oku)}」まで 書けたかな？</div>`;
   h += `<div style="font-weight:800;margin-top:10px">ここに 気をつけて！（×に ならないために）</div>`;
-  uniq.forEach((c, ci) => {
-    const N = NOTES[c], st = STROKES[c] || [];
-    h += `<div class="kc"><div class="hd"><div class="gl">${esc(c)}</div><div class="meta"><b>${st.length}画</b>${WEAK.includes(c) ? ` <span class="wk">⚠️ 要注意の字</span>` : ""}<br>${N ? "★をタップすると その画が 赤くなるよ" : ""}</div></div>
-      <div class="sv"><svg viewBox="0 0 109 109" id="sv${ci}"></svg><div class="ctl">
-      <button class="btn g" data-play="${ci}">▶ 書き順を見る</button>
-      <button class="btn g" data-all="${ci}">ぜんぶ表示</button></div></div>`;
-    if (N) h += `<ul class="pt">${N.p.map((p, pi) => `<li class="${p.s.length ? "tap" : ""}" data-c="${ci}" data-p="${pi}"><div>${esc(p.t)}${p.s.length ? ` <span class="s">（${p.s.join("・")}画目）</span>` : ""}</div></li>`).join("")}</ul>`;
-    else h += `<div class="nonote">前の学年までに ならった字。形を 見て たしかめよう。</div>`;
-    h += `</div>`;
-  });
+  h += kanjiCardsHTML(uniq);
   h += `<div style="font-weight:800;margin-top:12px">自分で 丸つけ しよう</div>
     <div class="grade"><button class="g-o" data-g="o"><b>○</b>ばっちり</button><button class="g-s" data-g="s"><b>△</b>形が<br>あやしい</button><button class="g-x" data-g="x"><b>×</b>書けな<br>かった</button></div></div>`;
   const rev = document.getElementById("rev");
   rev.innerHTML = h;
-  uniq.forEach((c, ci) => drawStatic(ci, c, []));
-  rev.querySelectorAll("[data-play]").forEach(b => b.onclick = () => { const ci = +b.dataset.play; const c = uniq[ci]; animate(ci, c, NOTES[c] ? NOTES[c].p.flatMap(p => p.s) : []); });
-  rev.querySelectorAll("[data-all]").forEach(b => b.onclick = () => { const ci = +b.dataset.all; const c = uniq[ci]; rev.querySelectorAll(`li[data-c="${ci}"]`).forEach(x => x.classList.remove("sel")); drawStatic(ci, c, []); });
-  rev.querySelectorAll("li.tap").forEach(li => li.onclick = () => {
-    const ci = +li.dataset.c, c = uniq[ci];
-    rev.querySelectorAll(`li[data-c="${ci}"]`).forEach(x => x.classList.toggle("sel", x === li));
-    drawStatic(ci, c, NOTES[c].p[+li.dataset.p].s, true);
-  });
+  bindKanjiCards(rev, uniq);
   rev.querySelectorAll("[data-g]").forEach(b => b.onclick = () => {
     const g = b.dataset.g;
     record(it, g, g === "o");
     next();
   });
   rev.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+// ---- 字ごとのカード（画数・注意・書き順）：練習・テスト・じてんで使う ----
+function kanjiCardsHTML(chars, opt) {
+  opt = opt || {};
+  return chars.map((c, ci) => {
+    const N = NOTES[c], st = STROKES[c] || [];
+    let h = `<div class="kc">${opt.noHead ? "" : `<div class="hd"><div class="gl">${esc(c)}</div><div class="meta"><b>${st.length}画</b>${WEAK.includes(c) ? ` <span class="wk">⚠️ 要注意の字</span>` : ""}<br>${N ? "★をタップすると その画が 赤くなるよ" : ""}</div></div>`}
+      <div class="sv"><svg viewBox="0 0 109 109" id="sv${ci}"></svg><div class="ctl">
+      <button class="btn g" data-play="${ci}">▶ 書き順を見る</button>
+      <button class="btn g" data-all="${ci}">ぜんぶ表示</button></div></div>`;
+    if (N) h += `<ul class="pt">${N.p.map((p, pi) => `<li class="${p.s.length ? "tap" : ""}" data-c="${ci}" data-p="${pi}"><div>${esc(p.t)}${p.s.length ? ` <span class="s">（${p.s.join("・")}画目）</span>` : ""}</div></li>`).join("")}</ul>`;
+    else h += `<div class="nonote">前の学年までに ならった字。形を 見て たしかめよう。</div>`;
+    return h + `</div>`;
+  }).join("");
+}
+function bindKanjiCards(root, chars) {
+  chars.forEach((c, ci) => drawStatic(ci, c, []));
+  root.querySelectorAll("[data-play]").forEach(b => b.onclick = () => { const ci = +b.dataset.play; const c = chars[ci]; animate(ci, c, NOTES[c] ? NOTES[c].p.flatMap(p => p.s) : []); });
+  root.querySelectorAll("[data-all]").forEach(b => b.onclick = () => { const ci = +b.dataset.all; root.querySelectorAll(`li[data-c="${ci}"]`).forEach(x => x.classList.remove("sel")); drawStatic(ci, chars[ci], []); });
+  root.querySelectorAll("li.tap").forEach(li => li.onclick = () => {
+    const ci = +li.dataset.c, c = chars[ci];
+    root.querySelectorAll(`li[data-c="${ci}"]`).forEach(x => x.classList.toggle("sel", x === li));
+    drawStatic(ci, c, NOTES[c].p[+li.dataset.p].s, true);
+  });
 }
 
 // ---- 書き順の描画 ----
