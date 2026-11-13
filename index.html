@@ -177,6 +177,10 @@ h1{font-size:22px;margin:6px 0 2px;font-weight:800}
 .padlbl{font-size:14px;font-weight:800;margin:4px 0 6px;align-self:flex-start}
 canvas.pad{width:min(100%,clamp(220px,calc(100svh - 440px),340px));aspect-ratio:1/1;background:#fff;border:3px solid #e3c9a8;border-radius:8px;touch-action:none;display:block}
 canvas.pad.done{touch-action:auto}
+canvas.pad.tpad{width:min(100%,clamp(180px,calc(100svh - 510px),340px))}
+.trow{display:grid;grid-template-columns:1fr 1.7fr 1fr;gap:6px;width:100%;max-width:400px;margin:10px auto 0}
+.trow .btn{font-size:14px;padding:12px 4px;line-height:1.25}
+.trow .btn.main{font-size:16px}
 .padctl{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;width:100%;max-width:340px;margin-top:8px}
 .padctl .btn{font-size:14px;padding:10px 4px}
 .cnt{font-size:13px;color:var(--sub);margin-top:4px}
@@ -280,8 +284,8 @@ localStorage.setItem(LS, JSON.stringify(ALL));
 ALL.data = ALL.data || {};
 ALL.shuffle = ALL.shuffle !== false;
 const save = () => localStorage.setItem(LS, JSON.stringify(ALL));
-// 手書きモード：おためし版だけ（ID版には まだ出さない）。ホームで ノート／手書き を えらぶ
-const TG = () => TRY && !!ALL.tegaki;
+// 手書きモード：ホームで ノート／手書き を えらぶ（端末ごとに 1つ）
+const TG = () => !!ALL.tegaki;  // 手書きモード（ID版・おためし版 どちらでも。練習の書き と テストの書き の両方に効く）
 const me = () => { const n = ALL.cur; if (!ALL.data[n]) ALL.data[n] = { r: {}, w: {}, test: "" }; return ALL.data[n]; };
 // リンクの ?id=xxxx で自動ログイン
 if (!TRY) { const u = cleanId(new URLSearchParams(location.search).get("id")); if (IDS.includes(u)) { ALL.cur = u; save(); } }
@@ -353,9 +357,9 @@ function home() {
   const tests = d.tests || [];
   h += `<div class="card test">📅 テストの日 <input type="date" id="tdate" value="${esc(d.test || "")}"> ${days}</div>
   <div class="tip">おすすめの順番：<b>① 読み</b>を ぜんぶ ○ にする → <b>② 書き</b>（${TG() ? "画面に 指で書いて はんてい" : "ノートに書いてから 答えを見る"}）。<br>書きは「とめ・はね・はらい」まで しっかり 見よう。</div>`;
-  if (TRY) h += `<div class="card"><div style="font-weight:800">✏️ 書きの やり方を えらぼう</div>
+  h += `<div class="card"><div style="font-weight:800">✏️ 書きの やり方を えらぼう</div>
     <div class="tgsel"><button data-tg="0" class="${TG() ? "" : "on"}">📓 ノートに書く<small>紙に書いて 答えを見る</small></button><button data-tg="1" class="${TG() ? "on" : ""}">✍️ 手書きモード<small>画面に 指で書いて はんてい</small></button></div>
-    <div class="sub" style="margin-top:6px">手書きモードは 画数・書き順・形を 見るよ（とめ・はね・はらいは 見ない）。タブレットが おすすめ。テストモードは ノートで やるよ。</div></div>`;
+    <div class="sub" style="margin-top:6px">手書きモードは 画数・書き順・形を 見るよ（とめ・はね・はらいは 見ない）。タブレットが おすすめ。テストモードの 書きも、えらんだ やり方で やるよ。</div></div>`;
   for (const u of UNITS) {
     const its = byUnit(u.id);
     const r = its.filter(x => d.r[x.id] === 1).length, w = its.filter(x => d.w[x.id] === "o").length;
@@ -418,15 +422,16 @@ function testIntro() {
   <div class="tip" style="margin-top:10px;text-align:left">
     ⏱ <b>タイマー</b>：「はじめる」を おすと スタート。書きの40問目まで はかるよ（答え合わせの時間は 入らない）<br>
     ① <b>読み 10問</b>：ひらがなで 入れる（答えは さいごに わかる）<br>
-    ② <b>書き 40問</b>：ノートに <b>1〜40 の番号</b>を書いて、そこに 漢字を書く<br>
-    ③ さいごに <b>答え合わせ</b>：書きは 自分で ○△× をつける（○だけ 点になる）<br>
+    ② <b>書き 40問</b>：${TG() ? "画面の マスに 指で 漢字を書く（✍️ 手書きモード）" : "ノートに <b>1〜40 の番号</b>を書いて、そこに 漢字を書く"}<br>
+    ③ さいごに <b>答え合わせ</b>：${TG() ? "自分の字と はんていを 見て、" : "書きは "}自分で ○△× をつける（○だけ 点になる）<br>
     ・同じ漢字は 1回しか 出ないよ。とちゅうで 答えは 見られないよ。</div>
-  <div style="font-size:16px;font-weight:800;margin-top:12px">ノート（紙）と えんぴつを 用意してね！</div>
-  <button class="btn big" id="tgo">用意できた！ はじめる</button></div>`;
+  ${TG() ? `<div style="font-size:16px;font-weight:800;margin-top:12px">✍️ 書きは 手書きモードで やるよ</div><div class="sub">ノートで やりたいときは、ホームの「書きの やり方」で 📓ノート を えらんでね</div>`
+    : `<div style="font-size:16px;font-weight:800;margin-top:12px">ノート（紙）と えんぴつを 用意してね！</div>`}
+  <button class="btn big" id="tgo">${TG() ? "はじめる" : "用意できた！ はじめる"}</button></div>`;
   document.getElementById("quit").onclick = home;
   document.getElementById("tgo").onclick = () => {
     const b = buildTest(); if (!b) { alert("問題を作れませんでした。もう一回 おしてね"); return; }
-    T = { r: b.r, w: b.w, ra: [], ph: "r", i: 0, t0: Date.now(), wg: [], sk: [] };
+    T = { r: b.r, w: b.w, ra: [], ph: "r", i: 0, t0: Date.now(), wg: [], sk: [], ws: [], tg: TG() };
     window.scrollTo(0, 0); testShow();
   };
 }
@@ -469,6 +474,7 @@ function testShow() {
   } else if (T.ph === "w") {
     if (T.i >= 40) { T.ph = "c"; T.i = 0; return testCheckIntro(); }
     const it = T.w[T.i];
+    if (T.tg) return testTegaki(it);
     $app.innerHTML = tBar(10 + T.i, 50, `書き ${T.i + 1}/40`) + `<div class="card"><span class="mode w">書き</span>
       <div style="font-size:44px;font-weight:800;color:var(--main);text-align:center;margin-top:6px">（${T.i + 1}）</div>
       <div class="sent" style="margin-top:4px">${esc(it.pre)}<span class="box">${esc(it.yomi + it.oku)}</span>${esc(it.post)}</div>
@@ -481,10 +487,51 @@ function testShow() {
     document.getElementById("back").onclick = () => { T.i--; testShow(); };
   } else testCheck();
 }
+// ---- テストの書き：手書きモード（画面のマスに書く。判定は 答え合わせで 見せる） ----
+function testTegaki(it) {
+  const chars = [...it.k], saved = T.ws[T.i];
+  W = { it, slots: chars.filter(isKanji).map((c, k) => ({ c, strokes: saved && saved[k] ? saved[k].map(st => st.slice()) : [] })), sel: 0, done: false };
+  let slotsH = "", si = 0;
+  for (const c of chars) {
+    if (isKanji(c)) { slotsH += `<button class="slot" data-s="${si}" aria-label="${si + 1}字目"><div class="q">${si + 1}</div><svg viewBox="0 0 109 109"></svg></button>`; si++; }
+    else slotsH += `<span class="kana">${esc(c)}</span>`;
+  }
+  if (it.oku) slotsH += `<span class="okuri">（${esc(it.oku)}）</span>`;
+  const multi = W.slots.length > 1;
+  $app.innerHTML = tBar(10 + T.i, 50, `書き ${T.i + 1}/40`) + `<div class="card" id="qcard"><span class="mode w">書き（${T.i + 1}）</span>
+    <div class="sent">${esc(it.pre)}<span class="box">${esc(it.yomi + it.oku)}</span>${esc(it.post)}</div>
+    <div class="sub">四角の ひらがなを 漢字で、下の マスに 指で 書こう。${it.oku ? "送りがなは 書かなくて いいよ。" : ""}${multi ? `漢字は ${W.slots.length}字。1字ずつ 書いてね。` : ""}</div>
+    <div class="slots">${slotsH}</div>
+    <div class="padwrap"><div class="padlbl" id="padlbl"></div>
+      <canvas class="pad tpad" id="pad"></canvas>
+      <div class="cnt" id="cnt"></div>
+      <div class="padctl"><button class="btn g" id="undo">↩ 1画 もどす</button><button class="btn g" id="clr">🗑 ぜんぶ消す</button><button class="btn y" id="nextc">つぎの字 →</button></div>
+      <div class="trow"><button class="btn g" id="back" ${T.i ? "" : "disabled"}>← もどる</button><button class="btn main" id="go" disabled>書けた → つぎへ</button><button class="btn g" id="skip">わからない<br>（とばす）</button></div>
+    </div></div>`;
+  tQuit();
+  if (!multi) document.getElementById("nextc").style.visibility = "hidden";
+  $app.querySelectorAll(".slot").forEach(b => b.onclick = () => { W.sel = +b.dataset.s; tgRefresh(); });
+  document.getElementById("undo").onclick = () => { W.slots[W.sel].strokes.pop(); tgRefresh(); };
+  document.getElementById("clr").onclick = () => { W.slots[W.sel].strokes = []; tgRefresh(); };
+  document.getElementById("nextc").onclick = () => { W.sel = (W.sel + 1) % W.slots.length; tgRefresh(); };
+  const keep = () => { T.ws[T.i] = W.slots.map(s => s.strokes); };
+  document.getElementById("go").onclick = () => { keep(); T.sk[T.i] = false; T.i++; window.scrollTo(0, 0); testShow(); };
+  document.getElementById("skip").onclick = () => { T.ws[T.i] = null; T.sk[T.i] = true; T.i++; window.scrollTo(0, 0); testShow(); };
+  document.getElementById("back").onclick = () => { if (W.slots.some(s => s.strokes.length)) keep(); T.i--; testShow(); };
+  setupPad();
+  tgRefresh();
+}
+// 答え合わせ：自分の字＋はんてい（練習の 手書きと 同じ 見せ方。書きなおしボタンは 出さない）
+function testTgJudge(it) {
+  const strokes = T.ws[T.i];
+  W = { it, test: true, slots: [...it.k].filter(isKanji).map((c, k) => ({ c, strokes: strokes[k] || [] })), sel: 0, done: true };
+  W.res = W.slots.map(s => s.strokes.length ? TEGAKI.judgeChar(s.c, s.strokes) : null);
+  return tgJudgeHTML(W.res).replace(/<button class="btn g" id="rewrite"[^>]*>[^<]*<\/button>/, "");
+}
 function testWIntro() {
   $app.innerHTML = tBar(10, 50, "書きへ") + `<div class="card center"><div class="prep">✏️</div>
     <div style="font-size:20px;font-weight:800;line-height:1.7">つぎは 書き 40問</div>
-    <div class="tip" style="text-align:left">ノートに（1）〜（40）の 番号を 書いて、その番号のところに 漢字を 書こう。<br>わからない問題は「とばす」で OK。</div>
+    <div class="tip" style="text-align:left">${T.tg ? "画面の マスに 指で 漢字を 書こう（送りがなは 書かなくて いいよ）。書けたら「書けた → つぎへ」。" : "ノートに（1）〜（40）の 番号を 書いて、その番号のところに 漢字を 書こう。"}<br>わからない問題は「とばす」で OK。</div>
     <button class="btn big" id="go">はじめる</button></div>`;
   tQuit();
   document.getElementById("go").onclick = testShow;
@@ -494,7 +541,7 @@ function testCheckIntro() {
   $app.innerHTML = tBar(50, 50, "答え合わせ") + `<div class="card center"><div class="prep">🔍</div>
     <div style="font-size:20px;font-weight:800;line-height:1.7">ぜんぶ おわり！<br>つぎは 答え合わせ</div>
     <div style="font-size:18px;font-weight:800;color:#2563eb;margin:6px 0">⏱ かかった時間 ${clockJ(tElapsed())}</div>
-    <div class="tip" style="text-align:left">1問ずつ 答えが 出るよ。ノートと くらべて、<b>とめ・はね・はらい</b>まで 見て、○△× を つけよう。<br>△（形が あやしい）は 点に ならないよ。</div>
+    <div class="tip" style="text-align:left">1問ずつ 答えが 出るよ。${T.tg ? "自分の 書いた字と はんてい（画数・書き順・形）を 見て、" : "ノートと くらべて、"}<b>とめ・はね・はらい</b>まで 見て、○△× を つけよう。<br>△（形が あやしい）は 点に ならないよ。${T.tg ? "<br>はんていが ◎ でも、とめ・はね・はらいは 自分で たしかめてね。" : ""}</div>
     <button class="btn big" id="go">答え合わせ スタート</button></div>`;
   tQuit();
   document.getElementById("go").onclick = () => { T.i = 0; testCheck(); };
@@ -508,9 +555,11 @@ function testCheck() {
     <div class="sent" style="font-size:20px;margin:8px 0 0">${esc(it.pre)}<span class="box">${esc(it.yomi + it.oku)}</span>${esc(it.post)}</div>
     <div class="answer"><div class="k">${[...it.k].map(c => isKanji(c) ? esc(c) : `<span class="ok2">${esc(c)}</span>`).join("")}<span class="ok2">${esc(it.oku)}</span></div>${meanBtn(it)}</div>
     ${WORD_NOTES[it.k] ? `<div class="wn">💡 ${esc(WORD_NOTES[it.k])}</div>` : ""}${it.oku ? `<div class="wn">💡 送りがな「${esc(it.oku)}」まで 書けたかな？</div>` : ""}
+    ${!skipped && T.tg && T.ws[T.i] ? testTgJudge(it) : ""}
     ${skipped ? `<button class="btn big g" data-g="x">おぼえた！ つぎへ</button>` : `<div class="grade"><button class="g-o" data-g="o"><b>○</b>あってた</button><button class="g-s" data-g="s"><b>△</b>形が<br>あやしい</button><button class="g-x" data-g="x"><b>×</b>ちがう・<br>書けなかった</button></div>`}
     <button class="link" id="showN">とめ・はね・はらいを 見る ▼</button><div id="nt" class="hidden"></div></div>`;
   tQuit();
+  if (!skipped && T.tg && T.ws[T.i] && W && W.test && W.res) { W.slots.forEach((s, k) => playRef(k, W.res[k])); $app.querySelectorAll("[data-replay]").forEach(b => b.onclick = () => { const k = +b.dataset.replay; playRef(k, W.res[k]); }); }
   document.getElementById("showN").onclick = () => {
     const nt = document.getElementById("nt"); nt.classList.remove("hidden"); nt.innerHTML = kanjiCardsHTML(uniq); bindKanjiCards(nt, uniq);
     document.getElementById("showN").classList.add("hidden");
@@ -807,7 +856,7 @@ function reveal(it) {
   rev.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
-// ====================== 手書きモード（おためし版だけ） ======================
+// ====================== 手書きモード（練習の書き。テストの書きは testTegaki） ======================
 // 判定は judge.js（kanji4-tegaki と同じ。KanjiVG の書き順と くらべて 画数・書き順・形を見る）
 const PEN = 2.8;            // 書く線の太さ（kanji4-tegaki の 4.2 の 2/3）
 let W = null, pad = null;
@@ -890,7 +939,8 @@ function setupPad() {
 function drawPad() {
   if (!pad || !document.body.contains(pad.cv)) return;
   const cv = pad.cv, r = cv.getBoundingClientRect(), dpr = window.devicePixelRatio || 1;
-  if (cv.width !== Math.round(r.width * dpr)) { cv.width = Math.round(r.width * dpr); cv.height = Math.round(r.height * dpr); }
+  const pw = Math.round(r.width * dpr), ph = Math.round(r.height * dpr);
+  if (cv.width !== pw || cv.height !== ph) { cv.width = pw; cv.height = ph; }  // 幅と高さの 両方を 見る（幅だけだと 300×150 のまま のびる 画面がある）
   const ctx = pad.ctx, k = cv.width / 109;
   ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, cv.width, cv.height);
   ctx.setTransform(k, 0, 0, k, 0, 0);
